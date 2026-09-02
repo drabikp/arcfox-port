@@ -55,23 +55,39 @@ whose callers on stock are Motorola's patched `system_server` and `mediaserver`.
 On LineageOS those are AOSP binaries and will never call it, so shipping the HAL
 would start a service that nothing ever talks to.
 
-**USB file transfer (MTP/PTP) does not work.** Selecting "File transfer" in the
-USB notification has no effect: the gadget stays on `adb` plus charging, and no
-MTP interface is exposed to the host. Measured — the QTI gadget HAL rejects the
-switch:
+**USB modes.** File transfer (MTP), PTP and USB tethering over NCM all work as of
+device/motorola/sm8635-common `aa7bfc5`. Verified on a flashed build against the
+host USB descriptor:
 
-```
-android.hardware.usb.gadget-service.qti: mMonitor not running
-libusbconfigfs: Gadget cannot be pulled down
-android.hardware.usb.gadget-service.qti: Usb Gadget setcurrent functions failed
-UsbDeviceManager: setCurrentUsbFunctionsCb failed, functions:5, status:1
-```
+| Mode | Status | Evidence |
+|---|---|---|
+| File transfer (MTP) | works | interface class 6, PID `0x2e76`, `mtp-detect` opens a real session and enumerates storage |
+| PTP | works | interface class 6, PID `0x2e84` |
+| Tethering (NCM) | works | class 2 + class 10 CDC, host network interface comes up |
+| Tethering (RNDIS) | **does not apply** | see below |
+| Webcam (UVC) | **not supported** | see below |
 
-`sys.usb.mtp.ready` is empty and `current_functions_applied=false`. The HALs
-themselves run (`vendor.usb-hal`, `vendor.usbgadget-hal`), VINTF declares them,
-the ffs endpoints exist with correct `mtp:mtp` ownership and there is no SELinux
-denial, so this is a gadget-configuration problem rather than a missing service.
-**Not yet root-caused.** Workaround: `adb push` / `adb pull`.
+⚠️ **Builds before `aa7bfc5` had every USB mode switch broken** — selecting "File
+transfer" did nothing and the phone stayed on charging + adb. The cause was that
+we built `android.hardware.usb.gadget-service.qti`, which stock does not ship at
+all; declaring it moved AOSP from `UsbHandlerLegacy` onto the HAL path, and that
+path cannot link `ffs.mtp` on this kernel (`errno 22`). Motorola drives USB
+compositions from init instead, which is what the fix restores.
+
+**RNDIS tethering does not apply.** `init.mmi.usb.rc` rewrites `rndis,adb` into
+`rndis,${persist.vendor.usb.config.extra},adb`, and only `rndis,none,adb` has a
+handler — so with that property unset the string becomes `rndis,,adb` and matches
+nothing. Setting `persist.vendor.usb.config.extra=none` in `vendor.prop` should
+close it; that is identified but **not yet built or tested**. Not urgent: AOSP
+prefers NCM for USB tethering and NCM works.
+
+**USB webcam (UVC) is not supported, and is not supported on stock either.**
+There is no `uvc` composition anywhere in Motorola's `init.mmi.usb.rc` (only an
+unrelated `rndis,webcam` entry) and neither stock nor this build sets
+`ro.usb.uvc.enabled`. The gadget does expose a `uvc.0` function, so adding a
+composition plus the enable property would likely work — but that is **new
+functionality beyond stock**, not a regression, and it has deliberately not been
+attempted.
 
 **Not port limitations — hardware behaviour, identical on stock:**
 

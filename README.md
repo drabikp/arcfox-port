@@ -28,9 +28,32 @@ Verified on a flashed build, cold-booted:
 | Power | reverse wireless charging (power share) |
 | Other | WiFi, Bluetooth (incl. LHDC v5), NFC, fingerprint, face unlock (class 1) |
 
-**Known gap versus stock**, root-caused in `docs/HANDOFF-NEXT.md`: thermal
-profile switching is inert. It needs a Motorola framework client that does not
-exist on AOSP.
+**Known gap versus stock**, root-caused in `docs/HANDOFF-NEXT.md` §0.38:
+**thermal profile switching does not happen.**
+
+What that means in practice:
+
+- **Thermal protection still works.** The phone throttles and protects itself
+  normally — the default thermal profile is loaded and active at all times, and
+  the temperature at which the system reports SEVERE is unchanged. This is not a
+  safety or overheating issue.
+- **What is missing is stock's per-situation tuning.** Motorola ships eight
+  thermal profiles (camera, gaming, cover display, performance…) and switches
+  between them as you use the phone. We ship all eight files byte-identical to
+  stock, but only the default one is ever loaded, because the component that
+  selects a profile is a Motorola framework patch that does not exist on AOSP.
+- **The practical effect is throttling slightly sooner in heavy use.** In
+  stock's own numbers, its camera profile defers the first CPU mitigation from
+  40°C to 42°C; on this build the default profile applies instead, so during
+  sustained camera or game use the phone starts easing off a little earlier than
+  stock would. Expect marginally lower sustained performance under long heavy
+  load — not a difference you are likely to notice in ordinary use.
+
+It is documented as unfixable rather than unfixed: the profile selector is
+reached only through a Motorola-private interface (`motorola.hardware.sxf`)
+whose callers on stock are Motorola's patched `system_server` and `mediaserver`.
+On LineageOS those are AOSP binaries and will never call it, so shipping the HAL
+would start a service that nothing ever talks to.
 
 **Not port limitations — hardware behaviour, identical on stock:**
 

@@ -28,10 +28,20 @@ Verified on a flashed build, cold-booted:
 | Power | reverse wireless charging (power share) |
 | Other | WiFi, Bluetooth (incl. LHDC v5), NFC, fingerprint, face unlock (class 1) |
 
-Known limitations, each root-caused and documented in `docs/HANDOFF-NEXT.md`:
-thermal profile switching is inert (needs a Motorola framework client that does
-not exist on AOSP), face unlock can never do payments (2D RGB sensor — stock is
-identical), and the telephoto lens has no OIS.
+**Known gap versus stock**, root-caused in `docs/HANDOFF-NEXT.md`: thermal
+profile switching is inert. It needs a Motorola framework client that does not
+exist on AOSP.
+
+**Not port limitations — hardware behaviour, identical on stock:**
+
+- The telephoto camera has **no OIS**, so a zoomed *photo* preview shakes. EIS
+  is video-only. Nothing in software can change this.
+- Face unlock is **Class 1 (convenience)** and cannot authorise payments: the
+  sensor is a 2D RGB camera and the stock HAL declares the same class.
+- Reverse wireless charging works, but the phone will not transmit while it is
+  itself charging over USB.
+- "100% but still charging" is correct: this is a dual-cell battery, and the
+  flip cell terminates before the main cell finishes its constant-voltage phase.
 
 ---
 
@@ -114,8 +124,18 @@ Output: `out/target/product/arcfox/lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
 
 ## Flashing
 
-Read **[FLASHING.md](FLASHING.md)** before touching the device. Two rules that
-cost real time here:
+- **Installing a downloaded build?** → **[INSTALL-RELEASE.md](INSTALL-RELEASE.md)**
+  — prerequisites and the whole procedure, no build tree needed.
+- **Installing what you just built, or returning to stock?** →
+  [INSTALL.md](INSTALL.md)
+- **Want the rules and the reasoning?** → [FLASHING.md](FLASHING.md)
+
+⚠️ The install has only been tested onto stock **W1UXS36H.72-45-10-7**. The
+package writes 11 partitions and none of them are firmware — the modem,
+bootloader, DSP and Bluetooth firmware stay whatever the phone already has, and
+the vendor blobs were extracted from that train.
+
+Two rules that cost real time here:
 
 - **`fastbootd` cannot open `super` on arcfox.** Every logical-partition flash
   and even `getvar partition-size:super` fails there, while the same command
@@ -133,7 +153,9 @@ cost real time here:
 | `scripts/` | kernel assembly, firmware extraction, blob resolution, build and boot-test helpers |
 | `patches/` | out-of-tree patches for display-drivers, wlan and camera-kernel |
 | `kernel-modules-root/` | the `Android.bp`/`Android.mk` stubs for `sm8635-modules/` |
-| `FLASHING.md` | flashing runbook |
+| `INSTALL-RELEASE.md` | installing a downloaded build (start here as a user) |
+| `INSTALL.md` | installing your own build, and returning to stock |
+| `FLASHING.md` | developer runbook: the rules and why each exists |
 | `docs/` | engineering notes: root causes, measurements, and what was deliberately left alone |
 
 `docs/HANDOFF-NEXT.md` is the working record and supersedes `docs/HANDOFF.md`

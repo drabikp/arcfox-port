@@ -3,6 +3,10 @@
 A step-by-step install guide for the Motorola razr 50 ultra / razr+ 2024
 (codename **arcfox**, SM8635).
 
+If you downloaded a released build rather than building one, use
+**[INSTALL-RELEASE.md](INSTALL-RELEASE.md)** instead — it is self-contained and
+covers the prerequisites.
+
 `FLASHING.md` is the *developer* runbook — the rules behind these steps, and why
 each exists. This file is the procedure itself.
 

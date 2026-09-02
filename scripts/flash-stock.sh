@@ -10,6 +10,7 @@ R="${R:?set R to the RSA RomFiles directory, e.g. R=/mnt/win/ProgramData/RSA/Dow
 FB="${FB:-/opt/android-sdk/platform-tools/fastboot}"
 SER="${SER:-}"
 DRY="${DRY:-0}"
+REBOOT="${REBOOT:-1}"
 [ -n "$SER" ] && FBA=("$FB" -s "$SER") || FBA=("$FB")
 
 fb(){ if [ "$DRY" = "1" ]; then echo "    would: fastboot $*"; else "${FBA[@]}" "$@"; fi; }
@@ -78,5 +79,9 @@ fb oem config unset console
 fb oem config unset cmdl
 
 echo
-echo "=== done. Rebooting to stock. ==="
-fb reboot
+if [ "$REBOOT" = "1" ]; then
+  echo "=== done. Rebooting to stock. ==="
+  fb reboot
+else
+  echo "=== done. Staying in the bootloader (REBOOT=0). ==="
+fi

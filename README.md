@@ -55,9 +55,8 @@ whose callers on stock are Motorola's patched `system_server` and `mediaserver`.
 On LineageOS those are AOSP binaries and will never call it, so shipping the HAL
 would start a service that nothing ever talks to.
 
-**USB modes.** File transfer (MTP), PTP and USB tethering over NCM all work as of
-device/motorola/sm8635-common `aa7bfc5`. Verified on a flashed build against the
-host USB descriptor:
+**USB modes.** File transfer (MTP), PTP and USB tethering over NCM all work.
+Verified on a flashed build against the host USB descriptor:
 
 | Mode | Status | Evidence |
 |---|---|---|
@@ -66,13 +65,6 @@ host USB descriptor:
 | Tethering (NCM) | works | class 2 + class 10 CDC, host network interface comes up |
 | Tethering (RNDIS) | **does not apply** | see below |
 | Webcam (UVC) | **not supported** | see below |
-
-⚠️ **Builds before `aa7bfc5` had every USB mode switch broken** — selecting "File
-transfer" did nothing and the phone stayed on charging + adb. The cause was that
-we built `android.hardware.usb.gadget-service.qti`, which stock does not ship at
-all; declaring it moved AOSP from `UsbHandlerLegacy` onto the HAL path, and that
-path cannot link `ffs.mtp` on this kernel (`errno 22`). Motorola drives USB
-compositions from init instead, which is what the fix restores.
 
 **RNDIS tethering does not apply.** `init.mmi.usb.rc` rewrites `rndis,adb` into
 `rndis,${persist.vendor.usb.config.extra},adb`, and only `rndis,none,adb` has a

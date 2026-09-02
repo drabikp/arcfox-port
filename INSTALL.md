@@ -28,8 +28,11 @@ each exists. This file is the procedure itself.
 Check your bootloader is unlocked:
 
 ```bash
-fastboot getvar unlocked          # must print: unlocked: yes
+fastboot getvar securestate       # must print: securestate: flashing_unlocked
 ```
+
+⚠️ Not `getvar unlocked` — this bootloader has no such variable and answers
+`unlocked: not found`, which reads as "locked" and is not.
 
 ---
 

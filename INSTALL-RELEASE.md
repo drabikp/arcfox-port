@@ -46,12 +46,27 @@ Consequences if your phone is on an older (or much newer) train:
 
 ### Check what you have
 
-Settings → About phone → **Build number**, or with USB debugging enabled:
+**On the phone: Settings → About phone → Build number.** It should read
+`W1UXS36H.72-45-10-7`. This is the reliable check — use it.
+
+The `adb` equivalent works *only if USB debugging is already enabled*, which it
+is not on an untouched stock phone:
 
 ```bash
-adb shell getprop ro.build.version.incremental      # expect: W1UXS36H.72-45-10-7
-adb shell getprop ro.product.device                 # must be: arcfox
+adb devices -l                                                   # find your serial
+adb -s <serial> shell getprop ro.build.version.incremental       # W1UXS36H.72-45-10-7
+adb -s <serial> shell getprop ro.product.device                  # must be: arcfox
 ```
+
+⚠️ **Always pass `-s <serial>`.** With another Android device plugged in, a bare
+`adb shell` silently answers from *that* device — during testing it cheerfully
+reported a completely different phone's build, which would have sent a reader
+off to "fix" firmware that was already correct.
+
+⚠️ **`adb devices` listing the phone as `device` does not mean adb works.** On
+this phone it says `device` while every command returns `error: closed`, both on
+stock and on a freshly installed LineageOS before you enable USB debugging.
+Trust `adb shell echo ok`, not the device list.
 
 If `ro.product.device` is not `arcfox`, stop — this build is for a different
 phone.
@@ -119,9 +134,14 @@ Check you are in the right place:
 
 ```bash
 fastboot devices                        # your serial, then "fastboot"
-fastboot getvar unlocked                # must be: yes
+fastboot getvar securestate             # must be: flashing_unlocked
 fastboot getvar is-userspace            # must be: no
 ```
+
+⚠️ Do **not** use `fastboot getvar unlocked` — this bootloader has no such
+variable and answers `unlocked: not found`, which reads as "locked" and is not.
+`securestate` is the one that answers. Ignore the neighbouring `secure: yes`
+too; it is unrelated to whether the bootloader is unlocked.
 
 ### 2. Flash the recovery image
 
@@ -169,9 +189,12 @@ USB debugging (Settings → About phone → tap **Build number** seven times →
 Developer options → USB debugging):
 
 ```bash
-adb shell getprop ro.lineage.version     # 23.2-<date>-UNOFFICIAL-arcfox
-adb shell getprop ro.boot.slot_suffix    # the other slot from where you started
+adb -s <serial> shell getprop ro.lineage.version    # 23.2-<date>-UNOFFICIAL-arcfox
+adb -s <serial> shell getprop ro.boot.slot_suffix   # the other slot from where you started
 ```
+
+Until you enable USB debugging these return `error: closed`, even though
+`adb devices` lists the phone as `device`.
 
 ---
 

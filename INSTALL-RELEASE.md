@@ -209,6 +209,46 @@ someone chasing a bug that was not there:
 | `Failed to mount /metadata: File exists` / `Invalid f2fs superblock` | `metadata` has no filesystem because Motorola's own flash sequence erases it. The installer logs that it is skipping a step and carries on. |
 | `Total xfer: 1.00x` | Only means the file reached the phone. It is not an install result. |
 
+### After installing, apps have no internet
+
+Symptom: the browser shows `net::ERR_INTERNET_DISCONNECTED` or
+`ERR_NAME_NOT_RESOLVED`, and other apps behave as though offline — while the
+status bar shows a normal 5G/LTE or Wi-Fi connection, and the phone really is
+online (`adb shell ping` and `curl` from a shell both work fine).
+
+That contrast is the tell: `adb shell` runs as uid 2000 and bypasses the
+per-app network firewall, so shell tests pass while every ordinary app is
+blocked.
+
+**Cause — upstream LineageOS behaviour, not specific to this port.**
+`LineageSettingsProvider` turns on *restricted networking mode* when it first
+creates its database, which puts the network firewall into deny-by-default
+(allowlist) mode. The code that used to populate the allowlist was removed
+upstream (`lineage-sdk` f7c44fc8, "Clear restricted networking mode allowlist —
+Replaced by POLICY_REJECT_ALL"), and the migration in
+`NetworkPolicyManagerService` then marks every uid that is not on that
+now-empty allowlist with `POLICY_REJECT_ALL`. The result on a fresh install is
+ordinary apps with no network at all.
+
+Measured on this device after a clean install:
+
+```
+restricted_networking_mode = 1
+Restricted networking mode: true
+UID=10495 policy=262144 (REJECT_ALL)          # org.lineageos.jelly
+blocked_state={blocked=RESTRICTED_MODE|APP_BACKGROUND}
+```
+
+**Fix**, verified — apps regain network immediately, no reboot needed:
+
+```bash
+adb -s <serial> shell settings put global restricted_networking_mode 0
+```
+
+Per-app network access also has a UI, under **Settings → Apps → <app> →
+Mobile data & Wi-Fi**, if you would rather grant it selectively than turn the
+mode off.
+
 **One message that is a real failure:**
 
 ```

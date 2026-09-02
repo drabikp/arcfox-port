@@ -33,6 +33,31 @@ adb reboot bootloader          # or: power off fully, hold Volume Down + Power
 ```
 Do **not** use `adb reboot fastboot` — that is fastbootd.
 
+## Rule 1b — Use the documented install path, not an improvised fastboot flash
+
+To put a new build on the device, follow `INSTALL-RELEASE.md`: restore stock,
+`fastboot flash recovery`, `adb sideload` the zip, wipe `/data`. That path is
+validated end to end. Hand-rolling
+`fastboot flash boot/init_boot/vendor_boot/dtbo/vbmeta/super` to save a cycle
+bootlooped the handset.
+
+⚠️ **`build-super-mix.sh` produces a SLOT-A-ONLY super.** Every `_b` partition in
+its metadata has no extents:
+
+```
+Name: system_a   Extents: 0 .. 1729567 linear super 2048
+Name: system_b   Extents:                                  <-- empty
+```
+
+A sideload flips the active slot (`_a` -> `_b`), so flashing that super while the
+device is on slot B leaves the active slot with no system or vendor, and it will
+not boot. The image is sparse, so inspect it with `simg2img` first — `lpdump` on
+the sparse file fails with "invalid geometry magic signature", which looks like
+corruption and is not.
+
+If you must flash super from fastboot, check `fastboot getvar current-slot` and
+pair it with `fastboot --set-active=a`.
+
 ## Rule 2 — Gate test before every flash
 
 Two checks. Both must pass or **stop**:

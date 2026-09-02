@@ -55,6 +55,24 @@ whose callers on stock are Motorola's patched `system_server` and `mediaserver`.
 On LineageOS those are AOSP binaries and will never call it, so shipping the HAL
 would start a service that nothing ever talks to.
 
+**USB file transfer (MTP/PTP) does not work.** Selecting "File transfer" in the
+USB notification has no effect: the gadget stays on `adb` plus charging, and no
+MTP interface is exposed to the host. Measured — the QTI gadget HAL rejects the
+switch:
+
+```
+android.hardware.usb.gadget-service.qti: mMonitor not running
+libusbconfigfs: Gadget cannot be pulled down
+android.hardware.usb.gadget-service.qti: Usb Gadget setcurrent functions failed
+UsbDeviceManager: setCurrentUsbFunctionsCb failed, functions:5, status:1
+```
+
+`sys.usb.mtp.ready` is empty and `current_functions_applied=false`. The HALs
+themselves run (`vendor.usb-hal`, `vendor.usbgadget-hal`), VINTF declares them,
+the ffs endpoints exist with correct `mtp:mtp` ownership and there is no SELinux
+denial, so this is a gadget-configuration problem rather than a missing service.
+**Not yet root-caused.** Workaround: `adb push` / `adb pull`.
+
 **Not port limitations — hardware behaviour, identical on stock:**
 
 - The telephoto camera has **no OIS**, so a zoomed *photo* preview shakes. EIS

@@ -195,6 +195,9 @@ whichever you prefer.
 Note the middle level — it is three menus deep, not two. Do not forget the
 reboot: formatting leaves you sitting in recovery.
 
+This route reboots **once**, straight into the system, because recovery does the
+formatting itself.
+
 **From the bootloader** (no menu taps):
 
 ```bash
@@ -205,8 +208,9 @@ fastboot reboot
 
 `fastboot -w` prints `Erase successful, but not automatically formatting` and
 `File system type raw not supported` — both are normal. The system formats the
-partitions on the next boot. Observed here: the phone then reboots **twice**,
-once to format `/data` and once into the system.
+partitions on the next boot. This route therefore reboots **twice**: once for the
+system to format `/data`, then again into the system proper. Both counts were
+observed from the host by watching the phone drop off USB and re-enumerate.
 
 ### 6. First boot
 

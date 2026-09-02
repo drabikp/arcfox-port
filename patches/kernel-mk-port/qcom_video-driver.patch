@@ -1,0 +1,35 @@
+diff --git a/Makefile b/Makefile
+index 04a894a..44a798d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,5 +1,8 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ 
++KBUILD_OPTIONS += VIDEO_ROOT=$(KERNEL_SRC)/$(M)
++KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(OUT_DIR)/../sm8635-modules/qcom/opensource/mmrm-driver/Module.symvers
+ VIDEO_COMPILE_TIME = $(shell date)
+ VIDEO_COMPILE_BY = $(shell whoami | sed 's/\\/\\\\/')
+ VIDEO_COMPILE_HOST = $(shell uname -n)
+diff --git a/video/Kbuild b/video/Kbuild
+index aac7f52..438dcad 100644
+--- a/video/Kbuild
++++ b/video/Kbuild
+@@ -10,6 +10,7 @@ endif
+ 
+ ifeq ($(CONFIG_MSM_VIDC_PINEAPPLE), y)
+ LINUXINCLUDE   += -I$(VIDEO_DRIVER_ABS_PATH)/platform/pineapple/inc \
++                  -I$(VIDEO_DRIVER_ABS_PATH)/platform/cliffs/inc \
+                   -I$(VIDEO_DRIVER_ABS_PATH)/variant/iris33/inc
+ endif
+ 
+@@ -24,7 +25,8 @@ USERINCLUDE    += -I$(VIDEO_ROOT)/include/uapi/vidc/media \
+ obj-m += video.o
+ 
+ ifeq ($(CONFIG_MSM_VIDC_PINEAPPLE), y)
+-video-objs +=     $(VIDEO_DRIVER_REL_PATH)/platform/pineapple/src/pineapple.o \
++video-objs +=     $(VIDEO_DRIVER_REL_PATH)/platform/cliffs/src/cliffs.o \
++                  $(VIDEO_DRIVER_REL_PATH)/platform/pineapple/src/pineapple.o \
+                   $(VIDEO_DRIVER_REL_PATH)/variant/iris33/src/msm_vidc_buffer_iris33.o \
+                   $(VIDEO_DRIVER_REL_PATH)/variant/iris33/src/msm_vidc_power_iris33.o \
+                   $(VIDEO_DRIVER_REL_PATH)/variant/iris33/src/msm_vidc_bus_iris33.o \

@@ -1,0 +1,18 @@
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ -8,6 +8,14 @@
+ # the mot_ois/mot_actuator objects; stock exports them.
+ KBUILD_OPTIONS += TARGET_PRODUCT=rtwo
+ KBUILD_OPTIONS += CONFIG_AF_NOISE_ELIMINATION=y
++# arcfox: synx v2 (pineapple). QC passes this from camera-kernel/Android.mk
++# (dependency.mk -> CAM_SYNX_EXTRA_CONFIGS), which LineageOS kernel.mk never
++# reads. Without it Kbuild drops drivers/cam_sync/cam_sync_synx.o and
++# -DCONFIG_TARGET_SYNX_ENABLE=1, so cam_generic_fence_parser() rejects
++# CAM_GENERIC_FENCE_TYPE_SYNX_OBJ (0x3) with -EINVAL and CamX SIGABRTs in
++# CSLCreateAndBindSynxFenceHW(). Stock camera.ko exports the cam_synx_obj_*
++# layer and imports synx_create/synx_initialize/... from synx-driver.ko.
++KBUILD_OPTIONS += TARGET_SYNX_ENABLE=y
+ KBUILD_EXTRA_SYMBOLS := \
+     $(OUT_DIR)/../sm8635-modules/qcom/opensource/mmrm-driver/Module.symvers \
+     $(OUT_DIR)/../sm8635-modules/qcom/opensource/securemsm-kernel/Module.symvers \

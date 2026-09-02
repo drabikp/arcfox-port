@@ -1,0 +1,16 @@
+--- $HOME/android/arcfox/kernel/motorola/sm8635-modules.xiaomi-base/qcom/opensource/display-drivers/msm/sde_dsc_helper.h
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/display-drivers/msm/sde_dsc_helper.h
+@@ -17,6 +17,13 @@
+ int sde_dsc_populate_dsc_config(struct drm_dsc_config *dsc, int scr_ver);
+ #endif
+ 
++/* arcfox: Novatek DDIC variant, selected by "qcom,mdss-dsc-novateck-ic". */
++#ifdef MI_DISPLAY_MODIFY
++int sde_dsc_populate_dsc_config_nt(struct drm_dsc_config *dsc, int scr_ver, u64 mi_panel_id);
++#else
++int sde_dsc_populate_dsc_config_nt(struct drm_dsc_config *dsc, int scr_ver);
++#endif
++
+ int sde_dsc_populate_dsc_private_params(struct msm_display_dsc_info *dsc_info,
+ 		int intf_width, bool widebus_en);
+ 

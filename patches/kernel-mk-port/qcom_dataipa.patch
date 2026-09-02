@@ -1,0 +1,12 @@
+diff --git a/drivers/platform/msm/Makefile b/drivers/platform/msm/Makefile
+index ef1cc33..f6be269 100644
+--- a/drivers/platform/msm/Makefile
++++ b/drivers/platform/msm/Makefile
+@@ -11,3 +11,7 @@ clean:
+ 
+ %:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) $@ $(KBUILD_OPTIONS)
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers

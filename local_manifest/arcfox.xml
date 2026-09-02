@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  arcfox (Motorola razr 50 ultra, SM8635) - LineageOS 23.2
+
+  Drop this at .repo/local_manifests/arcfox.xml on top of a lineage-23.2 tree:
+
+      repo init -u https://github.com/LineageOS/android.git -b lineage-23.2
+      mkdir -p .repo/local_manifests
+      curl -o .repo/local_manifests/arcfox.xml \
+        https://raw.githubusercontent.com/drabikp/arcfox-port/master/local_manifest/arcfox.xml
+      repo sync -c -j8
+
+  Proprietary blobs are NOT published here. After syncing, run
+  scripts/extract-firmware.sh + the device tree's extract-files.py against a
+  stock firmware package, then scripts/fix-vendor-blobs.sh. See README.md.
+-->
+<manifest>
+
+  <remote name="gh-arcfox" fetch="https://github.com/drabikp" revision="refs/heads/master" />
+  <remote name="gh-moto"   fetch="https://github.com/MotorolaMobilityLLC" />
+  <remote name="gh-los"    fetch="https://github.com/LineageOS" />
+
+  <!-- ==================================================================
+       1. Device trees
+       ================================================================== -->
+  <project path="device/motorola/arcfox"
+           name="android_device_motorola_arcfox"
+           remote="gh-arcfox" revision="refs/heads/master" />
+  <project path="device/motorola/sm8635-common"
+           name="android_device_motorola_sm8635-common"
+           remote="gh-arcfox" revision="refs/heads/master" />
+
+  <!-- ==================================================================
+       2. Kernel
+
+       sm8635 is Motorola's kernel-msm for the arcfox train, with Google's
+       ACK android14-6.1 merged forward for CVE currency. The merge is NOT
+       reproducible from a script, which is why the branch is published.
+       ================================================================== -->
+  <project path="kernel/motorola/sm8635"
+           name="android_kernel_motorola_sm8635"
+           remote="gh-arcfox" revision="refs/heads/arcfox-ack-merge"
+           clone-depth="1" />
+
+  <!-- Pristine at Motorola's tag - no local changes, so taken from upstream. -->
+  <project path="kernel/motorola/sm8635-devicetrees"
+           name="kernel-devicetree"
+           remote="gh-moto" revision="refs/tags/MMI-W1UXS36H.72-45-4-1"
+           clone-depth="1" />
+
+  <!-- ==================================================================
+       3. Kernel modules (techpacks)
+
+       MUST live in a directory named sm8635-modules that is a SIBLING of
+       the kernel: the techpack Kbuilds resolve $(KERNEL_SRC)/$(M), and
+       audio-kernel hardcodes a path to ../sm8635-modules/.../Module.symvers.
+
+       Forked (carry arcfox changes):
+       ================================================================== -->
+  <project path="kernel/motorola/sm8635-modules/motorola"
+           name="motorola-kernel-modules"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/audio-kernel"
+           name="vendor-qcom-opensource-audio-kernel"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/bt-kernel"
+           name="vendor-qcom-opensource-bt-kernel"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/camera-kernel"
+           name="vendor-qcom-opensource-camera-kernel"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/dataipa"
+           name="kernel-msm-techpack-dataipa"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/datarmnet"
+           name="vendor-qcom-opensource-datarmnet"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/datarmnet-ext"
+           name="vendor-qcom-opensource-datarmnet-ext"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/eva-kernel"
+           name="vendor-qcom-opensource-eva-kernel"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/graphics-kernel"
+           name="vendor-qcom-opensource-graphics-kernel"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/securemsm-kernel"
+           name="vendor-qcom-opensource-securemsm-kernel"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/video-driver"
+           name="vendor-qcom-opensource-video-driver"
+           remote="gh-arcfox" revision="refs/heads/arcfox-kernel-mk-port" clone-depth="1" />
+
+  <!-- Pristine at Motorola's tag - taken straight from upstream. -->
+  <project path="kernel/motorola/sm8635-modules/nxp/opensource/driver"
+           name="vendor-nxp-opensource-driver"
+           remote="gh-moto" revision="refs/tags/MMI-W1UXS36H.72-45-4-1" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/dsp-kernel"
+           name="vendor-qcom-opensource-dsp-kernel"
+           remote="gh-moto" revision="refs/tags/MMI-W1UXS36H.72-45-4-1" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/mm-drivers"
+           name="vendor-qcom-opensource-mm-drivers"
+           remote="gh-moto" revision="refs/tags/MMI-W1UXS36H.72-45-4-1" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/mmrm-driver"
+           name="vendor-qcom-opensource-mmrm-driver"
+           remote="gh-moto" revision="refs/tags/MMI-W1UXS36H.72-45-4-1" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/mm-sys-kernel"
+           name="vendor-qcom-opensource-mm-sys-kernel"
+           remote="gh-moto" revision="refs/tags/MMI-W1UXS36H.72-45-4-1" clone-depth="1" />
+  <project path="kernel/motorola/sm8635-modules/qcom/opensource/synx-kernel"
+           name="vendor-qcom-opensource-synx-kernel"
+           remote="gh-moto" revision="refs/tags/MMI-W1UXS36H.72-45-4-1" clone-depth="1" />
+
+  <!-- display-drivers and wlan are NOT Motorola repos.
+
+       Motorola published no display-drivers for this train, and its qcacld-3.0
+       does not build. Both are taken from LineageOS's Xiaomi sm8635-modules
+       and patched by scripts/setup-kernel-repos.sh (patches/ in this repo).
+       This project is the SOURCE it copies from; the script writes the
+       assembled result into sm8635-modules/qcom/opensource/{display-drivers,wlan}.
+    -->
+  <project path="kernel/motorola/sm8635-modules.xiaomi-base"
+           name="android_kernel_xiaomi_sm8635-modules"
+           remote="gh-los" revision="refs/heads/lineage-23.2" clone-depth="1" />
+
+  <!-- ==================================================================
+       4. Platform repositories carrying arcfox changes
+
+       Each is a fork of the LineageOS repo the manifest would otherwise
+       sync, on a branch holding only the arcfox commits. remove-project
+       first, because a local manifest cannot redefine an existing path.
+       ================================================================== -->
+  <remove-project name="LineageOS/android_frameworks_av" />
+  <project path="frameworks/av" name="android_frameworks_av"
+           remote="gh-arcfox" revision="refs/heads/arcfox-blob-abi-shims" />
+
+  <remove-project name="LineageOS/android_frameworks_native" />
+  <project path="frameworks/native" name="android_frameworks_native"
+           remote="gh-arcfox" revision="refs/heads/arcfox-libbinder-atrace-shims" />
+
+  <remove-project name="LineageOS/android_packages_apps_Settings" />
+  <project path="packages/apps/Settings" name="android_packages_apps_Settings"
+           remote="gh-arcfox" revision="refs/heads/arcfox-face-enroll-preview" />
+
+  <remove-project name="LineageOS/android_packages_apps_SetupWizard" />
+  <project path="packages/apps/SetupWizard" name="android_packages_apps_SetupWizard"
+           remote="gh-arcfox" revision="refs/heads/arcfox-sk-translation" />
+
+  <remove-project name="LineageOS/android_hardware_qcom-caf_common" />
+  <project path="hardware/qcom-caf/common" name="android_hardware_qcom-caf_common"
+           remote="gh-arcfox" revision="refs/heads/arcfox-vndfwk-camera-gate" />
+
+  <remove-project name="LineageOS/android_packages_apps_DeskClock" />
+  <project path="packages/apps/DeskClock" name="android_packages_apps_DeskClock"
+           remote="gh-arcfox" revision="refs/heads/arcfox-widget-multidisplay-sizing" />
+
+  <remove-project name="LineageOS/android_vendor_lineage" />
+  <project path="vendor/lineage" name="android_vendor_lineage"
+           remote="gh-arcfox" revision="refs/heads/arcfox-clean-headers-sched-param" />
+
+  <remove-project name="LineageOS/android_vendor_qcom_opensource_interfaces" />
+  <project path="vendor/qcom/opensource/interfaces" name="android_vendor_qcom_opensource_interfaces"
+           remote="gh-arcfox" revision="refs/heads/arcfox-btaudio-lhdcv5" />
+
+  <!-- CarrierConfig is an AOSP project, not a LineageOS one. -->
+  <remove-project name="platform/packages/apps/CarrierConfig" />
+  <project path="packages/apps/CarrierConfig" name="android_packages_apps_CarrierConfig"
+           remote="gh-arcfox" revision="refs/heads/arcfox-orange-sk-ims" />
+
+</manifest>

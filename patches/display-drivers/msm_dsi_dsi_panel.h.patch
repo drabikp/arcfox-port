@@ -1,0 +1,24 @@
+--- $HOME/android/arcfox/kernel/motorola/sm8635-modules.xiaomi-base/qcom/opensource/display-drivers/msm/dsi/dsi_panel.h
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/display-drivers/msm/dsi/dsi_panel.h
+@@ -187,6 +187,21 @@
+ 	int disp_en_gpio;
+ 	int lcd_mode_sel_gpio;
+ 	u32 mode_sel_state;
++
++	/*
++	 * arcfox: Motorola drives the panel VIO/VCI/VDD load switches as plain
++	 * TLMM GPIOs in addition to the regulators in qcom,panel-supply-entries.
++	 * Recovered from the stock vendor_dlkm msm_drm.ko: dsi_panel_parse_gpios
++	 * stores them at panel+0x5f4/0x5f8/0x5fc, i.e. appended to this struct
++	 * immediately after mode_sel_state. Same order kept here.
++	 *
++	 * arcfox's DT provides vio (GPIO 125) and vdd (GPIO 126) on both panels;
++	 * no *-vci-enable-gpio exists anywhere in the DTB, so vci_enable_gpio
++	 * stays invalid and every use of it is a no-op.
++	 */
++	int vio_enable_gpio;
++	int vci_enable_gpio;
++	int vdd_enable_gpio;
+ };
+ 
+ enum esd_check_status_mode {

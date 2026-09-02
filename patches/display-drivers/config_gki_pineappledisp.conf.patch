@@ -1,0 +1,10 @@
+--- $HOME/android/kernel-src/xiaomi-base-backup/sm8635-modules.xiaomi-base/qcom/opensource/display-drivers/config/gki_pineappledisp.conf	2026-08-18 15:15:49.611865432 +0200
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/display-drivers/config/gki_pineappledisp.conf	2026-08-27 23:44:28.060853473 +0200
+@@ -16,4 +16,7 @@
+ export CONFIG_QTI_HW_FENCE=y
+ export CONFIG_QCOM_SPEC_SYNC=y
+ export CONFIG_QCOM_WCD939X_I2C=y
++# arcfox: Xiaomi display extensions -- mi_disp/ calls mi_display_pwrkey_callback_set,
++# which only exists as a Xiaomi patch in drivers/input/misc/pm8941-pwrkey.c.
++# Motorola's kernel has no such patch and arcfox does not want Xiaomi extensions.
+ export MI_DISPLAY_MODIFY=y

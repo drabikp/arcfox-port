@@ -1,0 +1,11 @@
+// arcfox: keep these techpack/driver modules OUT of the default soong
+// namespace. Several of them export header modules that also exist in
+// hardware/qcom-caf/common (qti_audio_kernel_uapi, qti_display_kernel_headers,
+// qti_ipa_kernel_headers, smmu_proxy_uapi_header); without this, soong
+// bootstrap fails with "module ... already defined".
+// Mirrors LineageOS/android_kernel_xiaomi_sm8635-modules' own root Android.bp.
+// NOTE: no imports -- Motorola's kernel-msm repo declares no namespace of
+// its own (LineageOS added one to their xiaomi kernel fork). A bare
+// namespace is all that is needed to avoid the default-namespace clash.
+soong_namespace {
+}

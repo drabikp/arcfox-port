@@ -1,0 +1,12 @@
+diff --git a/Makefile b/Makefile
+index 89c01ac..bc82250 100644
+--- a/Makefile
++++ b/Makefile
+@@ -12,3 +12,7 @@ modules_install:
+ clean:
+ 	rm -f *.o *.ko *.mod.c *.mod.o *~ .*.cmd Module.symvers
+ 	rm -rf .tmp_versions
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dsp-kernel/include/linux -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dsp-kernel/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/synx-kernel/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/dsp-kernel/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/mmrm-driver/Module.symvers"

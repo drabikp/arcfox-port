@@ -1,0 +1,17 @@
+diff --git a/Makefile b/Makefile
+index d705f2f..049f7ba 100644
+--- a/Makefile
++++ b/Makefile
+@@ -7,7 +7,11 @@ endif
+ M=$(PWD)
+ AUDIO_ROOT=$(KERNEL_SRC)/$(M)
+ 
+-KBUILD_OPTIONS+=  AUDIO_ROOT=$(AUDIO_ROOT)
++KBUILD_OPTIONS += AUDIO_ROOT=$(AUDIO_ROOT)
++# without MODNAME+BOARD_PLATFORM every subdir gate no-ops -> 0 modules, exit 0
++KBUILD_OPTIONS += MODNAME=audio_dlkm
++KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(OUT_DIR)/../sm8635-modules/qcom/opensource/mm-drivers/msm_ext_display/Module.symvers
+ 
+ all: modules
+ 

@@ -1,0 +1,31 @@
+--- $HOME/android/arcfox/kernel/motorola/sm8635-modules.xiaomi-base/qcom/opensource/display-drivers/msm/mi_disp/mi_dsi_panel.c	2026-08-18 15:15:49.618532282 +0200
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/display-drivers/msm/mi_disp/mi_dsi_panel.c	2026-08-27 23:44:28.070853804 +0200
+@@ -40,7 +40,27 @@
+ struct dsi_panel *g_panel;
+ 
+ typedef int (*mi_display_pwrkey_callback)(int);
+-extern void mi_display_pwrkey_callback_set(mi_display_pwrkey_callback);
++/*
++ * arcfox: Xiaomi's kernel patches drivers/input/misc/pm8941-pwrkey.c to export
++ * mi_display_pwrkey_callback_set(). Motorola's kernel-msm carries no such patch,
++ * so this extern is undefined at modpost and msm_drm.ko fails to link.
++ *
++ * Motorola's own display-drivers are not published for the MMI-W1UXS36H train
++ * (vendor-qcom-opensource-display-drivers stops at MMI-T1TR33), so we build
++ * Xiaomi's. arcfox does not want Xiaomi powerkey/display integration at all --
++ * neutralise the hook rather than porting their pwrkey patch into a Motorola
++ * kernel. The registered callback simply never fires.
++ *
++ * NOTE: the rest of mi_disp/ is still compiled. Removing it outright is the
++ * cleaner end state but is NOT a supported configuration in Xiaomi's tree:
++ * 297 mi_* references live in 12 CORE display files and their
++ * #ifdef MI_DISPLAY_MODIFY guards are incomplete (e.g. sde_connector.c:2956
++ * dereferences panel->mi_cfg unguarded).
++ */
++static inline void mi_display_pwrkey_callback_set(mi_display_pwrkey_callback cb)
++{
++	(void)cb;
++}
+ 
+ static int mi_panel_id_init(struct dsi_panel *panel) {
+   if (!panel) {

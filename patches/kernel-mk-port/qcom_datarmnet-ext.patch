@@ -1,0 +1,84 @@
+diff --git a/aps/Makefile b/aps/Makefile
+index 3b150c8..1e94260 100644
+--- a/aps/Makefile
++++ b/aps/Makefile
+@@ -14,3 +14,7 @@ modules_install:
+ 
+ clean:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-DCONFIG_RMNET_LA_PLATFORM -DRMNET_TRACE_INCLUDE_PATH=$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet/core/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers"
+diff --git a/offload/Makefile b/offload/Makefile
+index d9e9d42..16d8b82 100644
+--- a/offload/Makefile
++++ b/offload/Makefile
+@@ -14,3 +14,7 @@ modules_install:
+ 
+ clean:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-DCONFIG_RMNET_LA_PLATFORM -DRMNET_TRACE_INCLUDE_PATH=$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet/core/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers"
+diff --git a/perf/Makefile b/perf/Makefile
+index 33b7f2c..4275af2 100644
+--- a/perf/Makefile
++++ b/perf/Makefile
+@@ -15,3 +15,7 @@ modules_install:
+ 
+ clean:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-DCONFIG_RMNET_LA_PLATFORM -DRMNET_TRACE_INCLUDE_PATH=$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet/core/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers"
+diff --git a/perf_tether/Makefile b/perf_tether/Makefile
+index 4a9ebcd..9ee109b 100644
+--- a/perf_tether/Makefile
++++ b/perf_tether/Makefile
+@@ -14,3 +14,7 @@ modules_install:
+ 
+ clean:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-DCONFIG_RMNET_LA_PLATFORM -DRMNET_TRACE_INCLUDE_PATH=$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet/core/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers"
+diff --git a/sch/Makefile b/sch/Makefile
+index b8749ce..36435d3 100644
+--- a/sch/Makefile
++++ b/sch/Makefile
+@@ -13,3 +13,7 @@ modules_install:
+ 
+ clean:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-DCONFIG_RMNET_LA_PLATFORM -DRMNET_TRACE_INCLUDE_PATH=$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet/core/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers"
+diff --git a/shs/Makefile b/shs/Makefile
+index 37be585..1736d6a 100644
+--- a/shs/Makefile
++++ b/shs/Makefile
+@@ -13,3 +13,7 @@ modules_install:
+ 
+ clean:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-DCONFIG_RMNET_LA_PLATFORM -DRMNET_TRACE_INCLUDE_PATH=$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet/core/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers"
+diff --git a/wlan/Makefile b/wlan/Makefile
+index 16ab5a0..17eaddc 100644
+--- a/wlan/Makefile
++++ b/wlan/Makefile
+@@ -14,3 +14,7 @@ modules_install:
+ 
+ clean:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean
++
++# ---- arcfox kernel.mk port ----
++KBUILD_OPTIONS += KCPPFLAGS="-DCONFIG_RMNET_LA_PLATFORM -DRMNET_TRACE_INCLUDE_PATH=$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet/core -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include -I$(KERNEL_SRC)/../sm8635-modules/qcom/opensource/dataipa/drivers/platform/msm/include/uapi"
++KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS="$(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet/core/Module.symvers $(OUT_DIR)/../sm8635-modules/qcom/opensource/datarmnet-ext/mem/Module.symvers"

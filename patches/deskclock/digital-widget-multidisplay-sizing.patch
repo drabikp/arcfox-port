@@ -1,0 +1,355 @@
+Subject: [PATCH] DeskClock: size the digital widget from its real bounds, and
+ stop the framework from dropping the update
+
+Apply in:  <ANDROID_TREE>/packages/apps/DeskClock
+Command:   git apply -p1 digital-widget-multidisplay-sizing.patch
+
+PROBLEM
+-------
+On arcfox (Motorola flip, two internal displays) the DeskClock "Digital clock"
+widget on the cover-display home screen has failed in two opposite directions.
+
+(1) With the stock provider the clock was sized for a box far larger than the
+    widget and the digits were clipped to slivers.
+
+(2) After the widget was widened to two grid rows the clock collapsed to a
+    single pixel.  Measured on device (dumpsys activity com.android.launcher3):
+
+      LauncherAppWidgetHostView  14,137-1030,355  = 1016 x 218 px
+        TextClock @id/clock      506,108-510,109  =    4 x   1 px
+          TextClock @id/date     0,0-5,1          =    5 x   1 px
+
+    A TextView with includeFontPadding="false" is about 1.16 x textSize tall,
+    so a 1 px tall clock means the applied RemoteViews was built with
+    mClockFontSizePx == 1 -- the floor optimizeSizes() returns when even a 1 px
+    font "overflows" the target box.
+
+ROOT CAUSE
+----------
+Two independent defects, both required to produce (2).
+
+A. Sizing against an empty options bundle.
+
+   Launcher3 lays out its default workspace through DefaultLayoutParser, which
+   binds the widget with the two-argument
+   AppWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, componentName) -- no
+   options bundle.  AppWidgetServiceImpl then immediately sends
+   ACTION_APPWIDGET_UPDATE while widget.options is still an empty Bundle.
+   relayoutWidget() finds no OPTION_APPWIDGET_SIZES, Bundle.getInt() returns 0
+   for every MIN_*/MAX_* key, and the clock is laid out for a 0 x 0 box.  Even
+   at a 1 px font the sizer still measures at least the layout's own padding
+   (widget_padding 16 dp = 36 px per side, so >= 72 px in each dimension), so
+   Sizes.hasViolations() is true against 0 x 0 and optimizeSizes() returns its
+   1 px floor.  That RemoteViews is what the widget still displays.
+
+   The stock code has exactly the same hole: it reads the same bundle with the
+   same Bundle.getInt() and would also size the clock for a 0 x 0 box.
+
+B. Every later, correctly sized update was silently dropped.
+
+   AppWidgetManager.tryAdapterConversion() (frameworks/base) routes any update
+   whose RemoteViews contains a legacy collection adapter through
+   shouldSkipListConversion():
+
+       return appWidgetIds.length == 1
+               && views.hasLegacyLists()
+               && mService.isFirstConfigActivityPending(mPackageName, ids[0]);
+
+   and when that is true it strips the intents and *returns without ever
+   invoking the update action* -- updateAppWidgetIds() is never called.  It
+   logs only "Skipping legacy list conversion, pending config activity".
+
+   digital_appwidget.xml declares android:configure=... without
+   android:widgetFeatures="configuration_optional", so
+   Widget.isFirstConfigActivityPending is set true at bind time
+   (AppWidgetServiceImpl line ~1720) and is never cleared, because a widget
+   placed from the default workspace never runs its configuration activity.
+
+   hasLegacyLists() becomes true as soon as any of the per-size RemoteViews
+   calls setRemoteAdapter() for @id/world_city_list, which relayoutWidget()
+   does when getListHeight() exceeds widget_min_world_city_list_size (80 dp =
+   180 px at this density).  At one grid row the tallest advertised size was
+   1016 x 417 px, which after the 332 px the widget measures at the maximum
+   font leaves 85 px -- below 180 px, so no entry enabled the list, no update
+   was ever routed through tryAdapterConversion(), and the widget looked
+   correct.  At two grid rows the *inner display's* portrait profile
+   contributes 1016 x 862 px and 1016 x 852 px entries; 862 - 332 = 530 px is
+   well above 180 px, the list is enabled, hasLegacyLists() flips to true, and
+   from that moment on every single update for this widget is discarded.
+
+   Measured, 10:07:05 on device, one relayoutWidget() call:
+
+     V/DigitalWidgetProvider: Target dimensions: 1016px x 218px / font 101px
+     V/DigitalWidgetProvider: Target dimensions: 1016px x 862px / font 180px
+     V/DigitalWidgetProvider: Target dimensions: 1016px x 852px / font 180px
+     V/DigitalWidgetProvider: Target dimensions:  604px x 342px / font 180px
+     V/DigitalWidgetProvider: Target dimensions: 1016px x 208px / font  95px
+     V/DigitalWidgetProvider: Target dimensions: 2212px x 342px / font 180px
+     D/AppWidgetManager: Skipping legacy list conversion, pending config activity
+     D/AppWidgetManager: Skipping collection notify, pending config activity
+
+   The provider computed a correct 101 px font for the real 1016 x 218 px
+   bounds; the framework threw the update away, and the view stayed 4 x 1 px.
+
+FIX
+---
+1. res/xml/digital_appwidget.xml: add
+   android:widgetFeatures="configuration_optional".
+   DigitalAppWidgetConfigurationActivity only chooses a transparent or solid
+   background and the widget renders correctly with the default, so
+   configuration genuinely is optional.  This clears
+   isFirstConfigActivityPending at bind time, so shouldSkipListConversion()
+   is false and updates carrying the world-city adapter are delivered.
+
+2. DigitalAppWidgetProvider: never size the clock from anything but bounds the
+   host actually reported.
+
+   - OPTION_APPWIDGET_MAX_WIDTH / MAX_HEIGHT are no longer read anywhere.  On a
+     device with more than one internal display Launcher3's WidgetSizeHandler
+     aggregates them over InvariantDeviceProfile.supportedProfiles, so
+     MAX_HEIGHT can describe a display the widget is not being drawn on.  That
+     was failure (1).
+   - The per-size map from OPTION_APPWIDGET_SIZES is kept: it is the API that
+     lets AppWidgetHostView.onLayout() pick the layout matching its real bounds.
+   - A synthetic entry is always added first, holding the component-wise
+     minimum of OPTION_APPWIDGET_MIN_WIDTH/MIN_HEIGHT and every advertised
+     size.  By construction it has the smallest area in the map, so
+     RemoteViews.findSmallestRemoteView() -- the layout the host applies before
+     it has ever laid the widget out, when mCurrentSize is still null -- is now
+     one that fits inside every size the host may choose instead of whichever
+     profile happened to have the smallest area.
+   - When the options bundle carries no size at all, that synthetic entry falls
+     back to AppWidgetProviderInfo.minWidth/minHeight (the appwidget-provider
+     XML declaration, 202 dp x 80 dp) and then to a 40 dp floor, so the target
+     box can never be 0 x 0.  That was failure (2)A.
+
+On arcfox the host now selects the 1016 x 218 px entry, whose measured clock
+font is 101 px.
+
+This is an upstream AOSP/LineageOS bug, not an arcfox port defect: it fires on
+any device whose launcher reports more than one device profile with materially
+different cell heights (foldables, flip phones, tablets with a cover screen).
+
+NOTE (not fixed here): shouldSkipListConversion() dropping the update instead
+of posting the stripped RemoteViews looks like an AOSP bug in
+frameworks/base/core/java/android/appwidget/AppWidgetManager.java --
+the "skip" branch calls viewsCopy.replaceAllIntentsWithEmptyList() and then
+falls out of the if without calling the action.  Making configuration optional
+side-steps it; it is worth reporting upstream.
+
+diff --git a/res/xml/digital_appwidget.xml b/res/xml/digital_appwidget.xml
+index cb876da80..4bbe66a57 100644
+--- a/res/xml/digital_appwidget.xml
++++ b/res/xml/digital_appwidget.xml
+@@ -27,4 +27,5 @@
+     android:resizeMode="horizontal|vertical"
+     android:updatePeriodMillis="0"
+     android:widgetCategory="keyguard|home_screen"
+-    android:configure="com.android.alarmclock.DigitalAppWidgetConfigurationActivity" />
++    android:configure="com.android.alarmclock.DigitalAppWidgetConfigurationActivity"
++    android:widgetFeatures="configuration_optional" />
+diff --git a/src/com/android/alarmclock/DigitalAppWidgetProvider.java b/src/com/android/alarmclock/DigitalAppWidgetProvider.java
+index 39d7075ae..7f21c7472 100644
+--- a/src/com/android/alarmclock/DigitalAppWidgetProvider.java
++++ b/src/com/android/alarmclock/DigitalAppWidgetProvider.java
+@@ -20,10 +20,9 @@ import static android.app.AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED;
+ import static android.app.PendingIntent.FLAG_IMMUTABLE;
+ import static android.app.PendingIntent.FLAG_NO_CREATE;
+ import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+-import static android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT;
+-import static android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH;
+ import static android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT;
+ import static android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH;
++import static android.appwidget.AppWidgetManager.OPTION_APPWIDGET_SIZES;
+ import static android.content.Intent.ACTION_CONFIGURATION_CHANGED;
+ import static android.content.Intent.ACTION_LOCALE_CHANGED;
+ import static android.content.Intent.ACTION_TIMEZONE_CHANGED;
+@@ -41,6 +40,7 @@ import android.app.AlarmManager;
+ import android.app.PendingIntent;
+ import android.appwidget.AppWidgetManager;
+ import android.appwidget.AppWidgetProvider;
++import android.appwidget.AppWidgetProviderInfo;
+ import android.content.BroadcastReceiver;
+ import android.content.ComponentName;
+ import android.content.Context;
+@@ -52,6 +52,7 @@ import android.os.Bundle;
+ import android.text.TextUtils;
+ import android.text.format.DateFormat;
+ import android.util.ArraySet;
++import android.util.SizeF;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.widget.LinearLayout;
+@@ -73,8 +74,10 @@ import com.android.deskclock.worldclock.CitySelectionActivity;
+ 
+ import java.util.Calendar;
+ import java.util.Date;
++import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Locale;
++import java.util.Map;
+ import java.util.Set;
+ import java.util.TimeZone;
+ 
+@@ -99,6 +102,16 @@ import java.util.TimeZone;
+  */
+ public class DigitalAppWidgetProvider extends AppWidgetProvider {
+ 
++    /** Matches RemoteViews.MAX_INIT_VIEW_COUNT; more entries would throw. */
++    private static final int MAX_SIZED_REMOTE_VIEWS = 16;
++
++    /**
++     * Widget size, in dp, of last resort. Only used when the host gave us no size at all *and*
++     * the provider info could not be read; it exists purely so the clock is never laid out for a
++     * 0x0 box, which collapses the font to 1px.
++     */
++    private static final float FALLBACK_WIDGET_SIZE_DP = 40f;
++
+     private static final LogUtils.Logger LOGGER = new LogUtils.Logger("DigitalWidgetProvider");
+ 
+     private static boolean sReceiversRegistered;
+@@ -203,27 +216,113 @@ public class DigitalAppWidgetProvider extends AppWidgetProvider {
+     }
+ 
+     /**
+-     * Compute optimal font and icon sizes offscreen for both portrait and landscape orientations
+-     * using the last known widget size and apply them to the widget.
++     * Compute optimal font and icon sizes offscreen for every set of bounds the host says it may
++     * give this widget, and apply them all so the host can pick the one that matches its real
++     * bounds.
+      */
+     private static void relayoutWidget(Context context, AppWidgetManager wm, int widgetId,
+             Bundle options) {
+-        final RemoteViews portrait = relayoutWidget(context, wm, widgetId, options, true);
+-        final RemoteViews landscape = relayoutWidget(context, wm, widgetId, options, false);
+-        final RemoteViews widget = new RemoteViews(landscape, portrait);
++        if (options == null) {
++            options = wm.getAppWidgetOptions(widgetId);
++        }
++
++        // OPTION_APPWIDGET_MIN_* / OPTION_APPWIDGET_MAX_* only describe the widget correctly when
++        // the host has a single set of bounds that differ by orientation. Launchers on devices
++        // with more than one internal display (foldables and flip phones) aggregate those four
++        // values over *every* supported device profile, so OPTION_APPWIDGET_MAX_HEIGHT can be the
++        // height this widget would have on a display it is not currently being drawn on. Sizing
++        // the clock against that value makes the text far too large for the real widget bounds,
++        // where it is then clipped by the parent LinearLayout. Neither MAX_* value is read
++        // anywhere below.
++        //
++        // OPTION_APPWIDGET_SIZES (API 31+) carries the exact list of sizes the host may use, so
++        // build one RemoteViews per size and let the host pick the one matching its real bounds.
++        final List<SizeF> sizes = options.getParcelableArrayList(OPTION_APPWIDGET_SIZES,
++                SizeF.class);
++
++        // The host does not know the widget's size until it has laid it out once, and until then
++        // RemoteViews.getRemoteViewsToApply() falls back to the entry with the smallest *area* --
++        // which is not necessarily an entry that fits. Always add a synthetic entry holding the
++        // component-wise minimum of everything the host advertised: it has the smallest area of
++        // the whole map by construction, so it becomes that fallback, and it fits inside every
++        // size the host may pick, so it can never be clipped. It is also the only entry when the
++        // host gave us no size list at all.
++        final SizeF smallestDp = getSmallestSizeDp(context, wm, widgetId, options, sizes);
++
++        final Map<SizeF, RemoteViews> viewsBySize = new LinkedHashMap<>();
++        viewsBySize.put(smallestDp, relayoutWidget(context, wm, widgetId, smallestDp));
++        if (sizes != null) {
++            for (SizeF size : sizes) {
++                if (size == null || size.getWidth() <= 0f || size.getHeight() <= 0f
++                        || viewsBySize.containsKey(size)
++                        || viewsBySize.size() >= MAX_SIZED_REMOTE_VIEWS) {
++                    continue;
++                }
++                viewsBySize.put(size, relayoutWidget(context, wm, widgetId, size));
++            }
++        }
++
++        final RemoteViews widget = viewsBySize.size() == 1
++                ? viewsBySize.values().iterator().next()
++                : new RemoteViews(viewsBySize);
++
+         wm.updateAppWidget(widgetId, widget);
+         wm.notifyAppWidgetViewDataChanged(widgetId, R.id.world_city_list);
+     }
+ 
++    /**
++     * @return the component-wise smallest size, in dp, that the host may give this widget. A
++     *     layout built for it fits inside every size the host advertised, on either display.
++     */
++    private static SizeF getSmallestSizeDp(Context context, AppWidgetManager wm, int widgetId,
++            Bundle options, List<SizeF> sizes) {
++        // OPTION_APPWIDGET_MIN_WIDTH / MIN_HEIGHT are the minima over every supported device
++        // profile, so they are always safe to use. Their MAX_* counterparts are not.
++        float widthDp = options.getInt(OPTION_APPWIDGET_MIN_WIDTH);
++        float heightDp = options.getInt(OPTION_APPWIDGET_MIN_HEIGHT);
++
++        if (sizes != null) {
++            for (SizeF size : sizes) {
++                if (size == null || size.getWidth() <= 0f || size.getHeight() <= 0f) {
++                    continue;
++                }
++                widthDp = widthDp > 0f ? Math.min(widthDp, size.getWidth()) : size.getWidth();
++                heightDp = heightDp > 0f ? Math.min(heightDp, size.getHeight()) : size.getHeight();
++            }
++        }
++
++        // A widget that was bound without an options bundle -- which is what Launcher3 does for
++        // the widgets in its default workspace, see DefaultLayoutParser -- has no size
++        // information at all until its host gets around to publishing some, and Bundle.getInt()
++        // then returns 0 for every key. Laying the clock out for a 0x0 box makes optimizeSizes()
++        // bottom out at a 1px font, so fall back to the size declared in appwidget-provider XML.
++        if (widthDp <= 0f || heightDp <= 0f) {
++            final float density = context.getResources().getDisplayMetrics().density;
++            final AppWidgetProviderInfo info = wm.getAppWidgetInfo(widgetId);
++            if (info != null) {
++                // AppWidgetManager.getAppWidgetInfo() converts these to px before returning.
++                if (widthDp <= 0f && info.minWidth > 0) {
++                    widthDp = info.minWidth / density;
++                }
++                if (heightDp <= 0f && info.minHeight > 0) {
++                    heightDp = info.minHeight / density;
++                }
++            }
++        }
++
++        return new SizeF(widthDp > 0f ? widthDp : FALLBACK_WIDGET_SIZE_DP,
++                heightDp > 0f ? heightDp : FALLBACK_WIDGET_SIZE_DP);
++    }
++
+     public static void updateAppWidget(Context context, AppWidgetManager wm, int widgetId) {
+         relayoutWidget(context, wm, widgetId, wm.getAppWidgetOptions(widgetId));
+     }
+ 
+     /**
+-     * Compute optimal font and icon sizes offscreen for the given orientation.
++     * Compute optimal font and icon sizes offscreen for one set of widget bounds.
+      */
+     private static RemoteViews relayoutWidget(Context context, AppWidgetManager wm, int widgetId,
+-            Bundle options, boolean portrait) {
++            @NonNull SizeF sizeDp) {
+         // Create a remote view for the digital clock.
+         final String packageName = context.getPackageName();
+         int[] layoutIds = WidgetUtils.getWidgetLayouts(context, widgetId);
+@@ -255,19 +354,12 @@ public class DigitalAppWidgetProvider extends AppWidgetProvider {
+             rv.setViewVisibility(R.id.nextAlarmIcon, VISIBLE);
+         }
+ 
+-        if (options == null) {
+-            options = wm.getAppWidgetOptions(widgetId);
+-        }
+-
+-        // Fetch the widget size selected by the user.
++        // Bounds this particular layout is built for. The host picks the layout whose bounds
++        // best match the space it actually has, so this is never another display's geometry.
+         final Resources resources = context.getResources();
+         final float density = resources.getDisplayMetrics().density;
+-        final int minWidthPx = (int) (density * options.getInt(OPTION_APPWIDGET_MIN_WIDTH));
+-        final int minHeightPx = (int) (density * options.getInt(OPTION_APPWIDGET_MIN_HEIGHT));
+-        final int maxWidthPx = (int) (density * options.getInt(OPTION_APPWIDGET_MAX_WIDTH));
+-        final int maxHeightPx = (int) (density * options.getInt(OPTION_APPWIDGET_MAX_HEIGHT));
+-        final int targetWidthPx = portrait ? minWidthPx : maxWidthPx;
+-        final int targetHeightPx = portrait ? maxHeightPx : minHeightPx;
++        final int targetWidthPx = max(1, (int) (density * sizeDp.getWidth()));
++        final int targetHeightPx = max(1, (int) (density * sizeDp.getHeight()));
+         final int largestClockFontSizePx =
+                 resources.getDimensionPixelSize(R.dimen.widget_max_clock_font_size);
+ 

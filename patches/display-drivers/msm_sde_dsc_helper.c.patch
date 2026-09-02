@@ -1,0 +1,94 @@
+--- $HOME/android/arcfox/kernel/motorola/sm8635-modules.xiaomi-base/qcom/opensource/display-drivers/msm/sde_dsc_helper.c
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/display-drivers/msm/sde_dsc_helper.c
+@@ -214,6 +214,49 @@
+ #endif
+ 
+ /*
++ * Rate control - Max QP values for Novatek DDICs, selected by the panel's
++ * "qcom,mdss-dsc-novateck-ic" flag.
++ *
++ * arcfox: Motorola publishes no display-drivers for the MMI-W1UXS36H train, so
++ * this table was recovered from the stock vendor_dlkm msm_drm.ko
++ * (BuildID b3a1500372138f4531d93a3b25152e9225e5a023), symbol
++ * sde_dsc_rc_range_max_qp_nt @ .rodata+0xb1c6, 210 bytes. It is the ONLY
++ * range_max_qp table in the stock module: stock's sde_dsc_populate_dsc_config()
++ * and sde_dsc_populate_dsc_config_nt() are byte-identical apart from one bl
++ * displacement and both reference it, i.e. Motorola applies the Novatek values
++ * unconditionally.
++ *
++ * It differs from Qualcomm's generic sde_dsc_rc_range_max_qp in exactly one
++ * cell: [DSC_V11_10BPC_8BPP][0] is 8 here and 4 upstream. arcfox's panel
++ * (Novatek NT37707, DSC v1.1, 10 bpc, 8 bpp, chroma 444, no
++ * qcom,mdss-dsc-scr-version -> scr_rev 0) resolves to exactly that row, so this
++ * single value is the whole delta between our PPS and the stock PPS.
++ *
++ * Xiaomi's own sde_dsc_rc_range_max_qp_nvt_36532 carries the same 8 for that
++ * row -- two independent vendors agree that Novatek DDICs need it.
++ */
++static char sde_dsc_rc_range_max_qp_nt[DSC_RATIO_TYPE_MAX][DSC_NUM_BUF_RANGES] = {
++	/* DSC v1.1 */
++	{4, 4, 5, 6, 7, 7, 7, 8, 9, 10, 11, 12, 13, 13, 15},
++	{8, 8, 9, 10, 11, 11, 11, 12, 13, 14, 15, 16, 17, 17, 19},
++	{7, 8, 9, 10, 11, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16},
++	/* DSC v1.1 SCR and DSC v1.2 RGB 444 */
++	{4, 4, 5, 6, 7, 7, 7, 8, 9, 10, 10, 11, 11, 12, 13},
++	{8, 8, 9, 10, 11, 11, 11, 12, 13, 14, 14, 15, 15, 16, 17},
++	{7, 8, 9, 10, 11, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16},
++	/* DSC v1.2 YUV422 */
++	{3, 4, 5, 6, 7, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12},
++	{2, 4, 5, 6, 7, 7, 7, 8, 8, 9, 9, 9, 9, 10, 11},
++	{7, 8, 9, 10, 11, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16},
++	{2, 5, 7, 8, 9, 10, 11, 12, 12, 13, 13, 13, 13, 14, 15},
++	{2, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13},
++	/* DSC v1.2 YUV420 */
++	{2, 4, 5, 6, 7, 7, 7, 8, 8, 9, 9, 9, 9, 10, 12},
++	{2, 5, 7, 8, 9, 10, 11, 12, 12, 13, 13, 13, 13, 14, 15},
++	{2, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13},
++};
++
++/*
+  * Rate control - bpg offset values for each ratio type in sde_dsc_ratio_type
+  */
+ static char sde_dsc_rc_range_bpg[DSC_RATIO_TYPE_MAX][DSC_NUM_BUF_RANGES] = {
+@@ -836,3 +879,41 @@
+ 
+ 	return 0;
+ }
++
++/*
++ * arcfox: Novatek variant of sde_dsc_populate_dsc_config().
++ *
++ * Mirrors stock's sde_dsc_populate_dsc_config_nt(). Everything the generic
++ * routine computes after the rate-control table loop (rc_param_lut, hrd_delay,
++ * initial_dec_delay, nfl_bpg_offset, scale factors, final_offset ...) is
++ * independent of rc_range_params, so overriding range_max_qp afterwards is
++ * exactly equivalent to having read it from the Novatek table inside the loop.
++ * Verified by reading sde_dsc_populate_dsc_config() end to end: rc_range_params
++ * is written but never read again.
++ */
++#ifdef MI_DISPLAY_MODIFY
++int sde_dsc_populate_dsc_config_nt(struct drm_dsc_config *dsc, int scr_ver, u64 mi_panel_id)
++#else
++int sde_dsc_populate_dsc_config_nt(struct drm_dsc_config *dsc, int scr_ver)
++#endif
++{
++	int rc, i, ratio_idx;
++
++#ifdef MI_DISPLAY_MODIFY
++	rc = sde_dsc_populate_dsc_config(dsc, scr_ver, mi_panel_id);
++#else
++	rc = sde_dsc_populate_dsc_config(dsc, scr_ver);
++#endif
++	if (rc)
++		return rc;
++
++	ratio_idx = _get_rc_table_index(dsc, scr_ver);
++	if ((ratio_idx < 0) || (ratio_idx >= DSC_RATIO_TYPE_MAX))
++		return -EINVAL;
++
++	for (i = 0; i < DSC_NUM_BUF_RANGES; i++)
++		dsc->rc_range_params[i].range_max_qp =
++			sde_dsc_rc_range_max_qp_nt[ratio_idx][i];
++
++	return 0;
++}

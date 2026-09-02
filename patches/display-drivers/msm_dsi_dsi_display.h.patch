@@ -1,0 +1,10 @@
+--- $HOME/android/arcfox/kernel/motorola/sm8635-modules.xiaomi-base/qcom/opensource/display-drivers/msm/dsi/dsi_display.h	2026-08-18 15:15:49.615198858 +0200
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/display-drivers/msm/dsi/dsi_display.h	2026-08-27 23:39:23.301095104 +0200
+@@ -211,6 +211,7 @@
+ 
+ 	const char *name;
+ 	const char *display_type;
++	bool mot_sysfs_created;
+ 	struct list_head list;
+ 	bool is_cont_splash_enabled;
+ 	bool is_hibernate_splash_enabled;

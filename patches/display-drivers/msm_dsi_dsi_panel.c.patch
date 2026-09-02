@@ -1,0 +1,208 @@
+--- $HOME/android/arcfox/kernel/motorola/sm8635-modules.xiaomi-base/qcom/opensource/display-drivers/msm/dsi/dsi_panel.c
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/display-drivers/msm/dsi/dsi_panel.c
+@@ -374,6 +374,30 @@
+ {
+ 	int rc = 0;
+ 
++	/*
++	 * arcfox: Motorola's power-on order, recovered from the stock
++	 * vendor_dlkm msm_drm.ko (dsi_panel_power_on inlined into
++	 * dsi_panel_pre_prepare @ .text+0x153de8):
++	 *
++	 *     vio = 1
++	 *     vdd = 1
++	 *     dsi_pwr_enable_regulator(&power_info, true)
++	 *     udelay(5000)
++	 *     vci = 1
++	 *     dsi_panel_set_pinctrl_state(panel, true)
++	 *     if (!lp11_init) dsi_panel_reset(panel)
++	 *
++	 * Stock uses gpio_set_value(), i.e. gpiod_set_raw_value() on the
++	 * descriptor -- raw, so the DT active-low flag is deliberately ignored
++	 * and the value written is the literal pad level. Keep it raw and keep
++	 * it non-cansleep exactly as stock does.
++	 */
++	if (gpio_is_valid(panel->reset_config.vio_enable_gpio))
++		gpio_set_value(panel->reset_config.vio_enable_gpio, 1);
++
++	if (gpio_is_valid(panel->reset_config.vdd_enable_gpio))
++		gpio_set_value(panel->reset_config.vdd_enable_gpio, 1);
++
+ 	if (panel->mi_cfg.is_tddi_flag) {
+ 		if (!panel->mi_cfg.tddi_doubleclick_flag || panel->mi_cfg.panel_dead_flag) {
+ 			rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+@@ -392,6 +416,19 @@
+ 		goto exit;
+ 	}
+ 
++	/*
++	 * arcfox: stock busy-waits 5 ms between the regulators coming up and
++	 * VCI being enabled (__const_udelay(5000 * 0x10C7) @ .text+0x153f34),
++	 * then enables VCI. Both are unconditional on the regulator-success
++	 * path. arcfox declares no VCI GPIO, so only the delay is observable
++	 * here -- it is kept so the sequence matches stock on any panel that
++	 * does declare one.
++	 */
++	udelay(5000);
++
++	if (gpio_is_valid(panel->reset_config.vci_enable_gpio))
++		gpio_set_value(panel->reset_config.vci_enable_gpio, 1);
++
+ 	rc = dsi_panel_set_pinctrl_state(panel, true);
+ 	if (rc) {
+ 		DSI_ERR("[%s] failed to set pinctrl, rc=%d\n", panel->name, rc);
+@@ -416,6 +453,21 @@
+ 	if (gpio_is_valid(panel->bl_config.en_gpio))
+ 		gpio_set_value_cansleep(panel->bl_config.en_gpio, 0);
+ 
++	/*
++	 * arcfox: stock's reset-failure unwind drops vci, vio then vdd in that
++	 * order (.text+0x153fe0..0x154028) before releasing pinctrl and the
++	 * regulators. Note the order here is NOT the mirror used by the normal
++	 * power-off path below; it is reproduced as stock has it.
++	 */
++	if (gpio_is_valid(panel->reset_config.vci_enable_gpio))
++		gpio_set_value(panel->reset_config.vci_enable_gpio, 0);
++
++	if (gpio_is_valid(panel->reset_config.vio_enable_gpio))
++		gpio_set_value(panel->reset_config.vio_enable_gpio, 0);
++
++	if (gpio_is_valid(panel->reset_config.vdd_enable_gpio))
++		gpio_set_value(panel->reset_config.vdd_enable_gpio, 0);
++
+ 	(void)dsi_panel_set_pinctrl_state(panel, false);
+ 
+ error_disable_vregs:
+@@ -473,6 +525,24 @@
+ 		       rc);
+ 	}
+ 
++	/*
++	 * arcfox: Motorola's power-off order, recovered from the stock
++	 * vendor_dlkm msm_drm.ko (dsi_panel_power_off inlined into
++	 * dsi_panel_post_unprepare @ .text+0x155e0c):
++	 *
++	 *     dsi_panel_set_pinctrl_state(panel, false)
++	 *     vci = 0
++	 *     dsi_pwr_enable_regulator(&power_info, false)
++	 *     vdd = 0
++	 *     udelay(5000)
++	 *     vio = 0
++	 *
++	 * i.e. the exact mirror of power-on: VIO comes up first and goes down
++	 * last, so the panel's IO rail is never the first to drop.
++	 */
++	if (gpio_is_valid(panel->reset_config.vci_enable_gpio))
++		gpio_set_value(panel->reset_config.vci_enable_gpio, 0);
++
+ 	if (panel->mi_cfg.is_tddi_flag) {
+ 		if(!panel->mi_cfg.tddi_doubleclick_flag || panel->mi_cfg.panel_dead_flag) {
+ 			rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+@@ -485,6 +555,15 @@
+ 	} else {
+ 		rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+ 	}
++
++	if (gpio_is_valid(panel->reset_config.vdd_enable_gpio))
++		gpio_set_value(panel->reset_config.vdd_enable_gpio, 0);
++
++	udelay(5000);
++
++	if (gpio_is_valid(panel->reset_config.vio_enable_gpio))
++		gpio_set_value(panel->reset_config.vio_enable_gpio, 0);
++
+ 	if (rc)
+ 		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
+ 				panel->name, rc);
+@@ -3259,13 +3338,20 @@
+ 	const char *data;
+ 	struct dsi_parser_utils *utils = &panel->utils;
+ 	char *reset_gpio_name, *mode_set_gpio_name;
++	char *vio_gpio_name, *vci_gpio_name, *vdd_gpio_name;
+ 
+ 	if (!strcmp(panel->type, "primary")) {
+ 		reset_gpio_name = "qcom,platform-reset-gpio";
+ 		mode_set_gpio_name = "qcom,panel-mode-gpio";
++		vio_gpio_name = "qcom,platform-vio-enable-gpio";
++		vci_gpio_name = "qcom,platform-vci-enable-gpio";
++		vdd_gpio_name = "qcom,platform-vdd-enable-gpio";
+ 	} else {
+ 		reset_gpio_name = "qcom,platform-sec-reset-gpio";
+ 		mode_set_gpio_name = "qcom,panel-sec-mode-gpio";
++		vio_gpio_name = "qcom,platform-sec-vio-enable-gpio";
++		vci_gpio_name = "qcom,platform-sec-vci-enable-gpio";
++		vdd_gpio_name = "qcom,platform-sec-vdd-enable-gpio";
+ 	}
+ 
+ 	panel->reset_config.reset_gpio = utils->get_named_gpio(utils->data,
+@@ -3298,6 +3384,28 @@
+ 
+ 	DSI_DEBUG("mode gpio=%d\n", panel->reset_config.lcd_mode_sel_gpio);
+ 
++	/*
++	 * arcfox: panel VIO/VCI/VDD load-switch GPIOs. Stock parses these here,
++	 * between the mode-sel GPIO and qcom,mdss-dsi-mode-sel-gpio-state, in
++	 * the order vio, vci, vdd. Absent properties leave the field invalid and
++	 * every consumer below is guarded by gpio_is_valid(), so a panel that
++	 * does not declare them behaves exactly as before.
++	 */
++	panel->reset_config.vio_enable_gpio = utils->get_named_gpio(
++		utils->data, vio_gpio_name, 0);
++	if (!gpio_is_valid(panel->reset_config.vio_enable_gpio))
++		DSI_DEBUG("vio enable gpio not specified\n");
++
++	panel->reset_config.vci_enable_gpio = utils->get_named_gpio(
++		utils->data, vci_gpio_name, 0);
++	if (!gpio_is_valid(panel->reset_config.vci_enable_gpio))
++		DSI_DEBUG("vci enable gpio not specified\n");
++
++	panel->reset_config.vdd_enable_gpio = utils->get_named_gpio(
++		utils->data, vdd_gpio_name, 0);
++	if (!gpio_is_valid(panel->reset_config.vdd_enable_gpio))
++		DSI_DEBUG("vdd enable gpio not specified\n");
++
+ 	data = utils->get_property(utils->data,
+ 		"qcom,mdss-dsi-mode-sel-gpio-state", NULL);
+ 	if (data) {
+@@ -3543,6 +3651,7 @@
+ 	u32 data;
+ 	int rc = -EINVAL;
+ 	int intf_width;
++	bool novateck_ic;
+ 	const char *compression;
+ 	struct dsi_display_mode_priv_info *priv_info;
+ 
+@@ -3692,14 +3801,30 @@
+ 	priv_info->dsc.config.block_pred_enable = utils->read_bool(utils->data,
+ 		"qcom,mdss-dsc-block-prediction-enable");
+ 
++	/*
++	 * arcfox: Motorola's stock driver reads this flag in
++	 * dsi_panel_parse_dsc_params() and routes DSC setup through
++	 * sde_dsc_populate_dsc_config_nt(), which uses Novatek-specific
++	 * rate-control max-QP values. Every arcfox panel timing node sets it.
++	 */
++	novateck_ic = utils->read_bool(utils->data, "qcom,mdss-dsc-novateck-ic");
++
+ 	priv_info->dsc.config.slice_count = DIV_ROUND_UP(intf_width,
+ 		priv_info->dsc.config.slice_width);
+ 
+ #ifdef MI_DISPLAY_MODIFY
+-	rc = sde_dsc_populate_dsc_config(&priv_info->dsc.config,
+-			priv_info->dsc.scr_rev, panel->mi_cfg.mi_panel_id);
++	if (novateck_ic)
++		rc = sde_dsc_populate_dsc_config_nt(&priv_info->dsc.config,
++				priv_info->dsc.scr_rev, panel->mi_cfg.mi_panel_id);
++	else
++		rc = sde_dsc_populate_dsc_config(&priv_info->dsc.config,
++				priv_info->dsc.scr_rev, panel->mi_cfg.mi_panel_id);
+ #else
+-	rc = sde_dsc_populate_dsc_config(&priv_info->dsc.config,
++	if (novateck_ic)
++		rc = sde_dsc_populate_dsc_config_nt(&priv_info->dsc.config,
++				priv_info->dsc.scr_rev);
++	else
++		rc = sde_dsc_populate_dsc_config(&priv_info->dsc.config,
+ 				priv_info->dsc.scr_rev);
+ #endif
+ 

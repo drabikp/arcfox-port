@@ -1,0 +1,218 @@
+--- $HOME/android/kernel-src/xiaomi-base-backup/sm8635-modules.xiaomi-base/qcom/opensource/wlan/qcacld-3.0/core/hdd/src/wlan_hdd_cfg.c	2026-08-18 15:15:50.088545224 +0200
++++ $HOME/android/arcfox/kernel/motorola/sm8635-modules/qcom/opensource/wlan/qcacld-3.0/core/hdd/src/wlan_hdd_cfg.c	2026-08-29 11:26:19.407111367 +0200
+@@ -211,120 +211,117 @@
+  * Return: QDF_STATUS_SUCCESS if the MAC address is found from cfg file
+  *      and overwritten, otherwise QDF_STATUS_E_INVAL
+  */
++/*
++ * arcfox: read the per-unit factory WiFi MAC from the bootloader.
++ *
++ * Motorola provisions it as a kernel cmdline arg, e.g.
++ *   wifimacaddr=AA:BB:CC:DD:EE:01,AA:BB:CC:DD:EE:02
++ * and patches hdd_update_mac_config (under MOTO_UTAGS_MAC, set unconditionally
++ * at their qcacld Kbuild:4402) to parse it out of the DT /chosen bootargs.
++ * This tree is LineageOS/Xiaomi's qcacld, which ships the stock QCOM variant
++ * that reads wlan_mac.bin instead -- and on arcfox that file does not exist,
++ * read_mac_addr_from_mac_file defaults to 0, and nothing provisions cnss_utils.
++ * Without this the driver falls through to the board-data MAC 00:03:7F:12:34:56
++ * (Qualcomm's placeholder, present at offset 0x40e in every bdwlan.* on this
++ * device), which is IDENTICAL ON EVERY UNIT -- two arcfox phones on one L2
++ * segment would collide.
++ *
++ * Ported from Motorola's wlan_hdd_cfg.c (the #else branch of MOTO_UTAGS_MAC).
++ * Their hdd_update_mac_serial / hdd_generate_random_mac_from_serialno are
++ * deliberately NOT ported: they are a third-tier fallback that never runs when
++ * this function succeeds, and their 38:80:DF OUI provably does not match this
++ * device's live MAC.
++ */
++#define ARCFOX_WIFI_MAC_BOOTARG "wifimacaddr="
++#ifndef MACSTRLEN
++#define MACSTRLEN 12
++#endif
++
+ QDF_STATUS hdd_update_mac_config(struct hdd_context *hdd_ctx)
+ {
+-	int status, i = 0;
+-	const struct firmware *fw = NULL;
+-	char *line, *buffer = NULL;
+-	char *temp = NULL;
+-	char *name, *value;
+-	int max_mac_addr = QDF_MAX_CONCURRENCY_PERSONA;
+-	struct hdd_cfg_entry mac_table[QDF_MAX_CONCURRENCY_PERSONA];
+-	struct qdf_mac_addr custom_mac_addr;
+-
+-	QDF_STATUS qdf_status = QDF_STATUS_SUCCESS;
++	int len = 0;
++	int i = 0;
++	int intf = 0;
++	char *bufferPtr = NULL;
++	char name[QDF_MAX_CONCURRENCY_PERSONA][16] = {{0}};
++	char buffer_temp[QDF_MAX_CONCURRENCY_PERSONA][MACSTRLEN+1] = {{0}};
++	const char *cmd_line = NULL;
++	struct device_node *chosen_node = NULL;
++	char *buffer = NULL;
+ 
+-	if (!hdd_ctx->config->read_mac_addr_from_mac_file) {
+-		hdd_debug("Reading MAC address from MAC file is not enabled.");
+-		return QDF_STATUS_E_FAILURE;
+-	}
++	struct hdd_cfg_entry macTable[QDF_MAX_CONCURRENCY_PERSONA];
++	tSirMacAddr customMacAddr;
+ 
+-	memset(mac_table, 0, sizeof(mac_table));
+-	status = hdd_firmware_request_nowarn(&fw, WLAN_MAC_FILE,
+-					     hdd_ctx->parent_dev);
+-	if (status) {
+-		/*
+-		 * request_firmware "fails" if the file is not found, which is a
+-		 * valid setup for us, so log using debug instead of error
+-		 */
+-		hdd_debug("request_firmware failed; status:%d", status);
+-		return QDF_STATUS_E_FAILURE;
+-	}
+-
+-	if (!fw || !fw->data || !fw->size) {
+-		hdd_alert("invalid firmware");
+-		qdf_status = QDF_STATUS_E_INVAL;
+-		goto config_exit;
+-	}
++	QDF_STATUS qdf_status = QDF_STATUS_SUCCESS;
+ 
+-	hdd_debug("wlan_mac.bin size %zu", fw->size);
++	memset(macTable, 0, sizeof(macTable));
+ 
+-	temp = qdf_mem_malloc(fw->size + 1);
+-	if (!temp) {
+-		qdf_status = QDF_STATUS_E_NOMEM;
++	/*Implemenation of QCOM is to read the MAC address from the predefined*/
++	/*location where WLAN MMAC File have the MAC Address                  */
++	/* Read MACs from bootparams. */
++	chosen_node = of_find_node_by_name(NULL, "chosen");
++	hdd_err("%s: get chosen node \n", __func__);
++	if (!chosen_node)
++	{
++		hdd_err("%s: get chosen node read failed \n", __func__);
+ 		goto config_exit;
+-	}
+-	buffer = temp;
+-	qdf_mem_copy(buffer, fw->data, fw->size);
+-	buffer[fw->size] = 0x0;
+-
+-	/* data format:
+-	 * Intf0MacAddress=00AA00BB00CC
+-	 * Intf1MacAddress=00AA00BB00CD
+-	 * END
+-	 */
+-	while (buffer) {
+-		line = get_next_line(buffer);
+-		buffer = i_trim(buffer);
+-
+-		if (strlen((char *)buffer) == 0 || *buffer == '#') {
+-			buffer = line;
+-			continue;
+-		}
+-		if (strncmp(buffer, "END", 3) == 0)
+-			break;
++	} else {
++		cmd_line = of_get_property(chosen_node, "bootargs", &len);
+ 
+-		name = buffer;
+-		buffer = strnchr(buffer, strlen(buffer), '=');
+-		if (buffer) {
+-			*buffer++ = '\0';
+-			i_trim(name);
+-			if (strlen(name) != 0) {
+-				buffer = i_trim(buffer);
+-				if (strlen(buffer) == 12) {
+-					value = buffer;
+-					mac_table[i].name = name;
+-					mac_table[i++].value = value;
+-					if (i >= QDF_MAX_CONCURRENCY_PERSONA)
+-						break;
+-				}
++		if (!cmd_line || len <= 0) {
++			hdd_err("%s: get wlan MACs bootargs failed \n", __func__);
++			qdf_status = QDF_STATUS_E_FAILURE;
++			goto config_exit;
++		} else {
++			buffer = strstr(cmd_line, ARCFOX_WIFI_MAC_BOOTARG);
++			if (buffer == NULL) {
++				hdd_err("%s: " ARCFOX_WIFI_MAC_BOOTARG " bootarg cmd line is null", __func__);
++				qdf_status = QDF_STATUS_E_FAILURE;
++				goto config_exit;
++			} else {
++				buffer += strlen(ARCFOX_WIFI_MAC_BOOTARG);
++				bufferPtr = buffer;
+ 			}
+ 		}
+-		buffer = line;
+ 	}
+-
+-	if (i != 0 && i <= QDF_MAX_CONCURRENCY_PERSONA) {
+-		hdd_debug("%d Mac addresses provided", i);
+-	} else {
+-		hdd_err("invalid number of Mac address provided, nMac = %d", i);
+-		qdf_status = QDF_STATUS_E_INVAL;
+-		goto config_exit;
++	/* Mac address data format used by qcom:
++	* Intf0MacAddress=00AA00BB00CC
++	* Intf1MacAddress=00AA00BB00CD
++	* xxxxxxxxxxxxxxxxxxxxxxxxxxxx
++	* To support utags only have one mac address 
++	* Intf0MacAddress is used for the device mac address(provisioned mac address).
++	* Populate the derived mac addresses based on the provisioned mac address.
++	* Set the provisioned mac address as the custom mac address.
++	*/
++	while (*bufferPtr != '\0' && *bufferPtr != ' ') {
++		if (*bufferPtr != ':' && *bufferPtr != ',') {
++			buffer_temp[intf][i++] = *bufferPtr;
++			if (i == MACSTRLEN) {
++				buffer_temp[intf][i] = '\0';
++				sprintf(name[intf], "Intf%dMacAddress", intf);
++				macTable[intf].name = name[intf];
++				macTable[intf].value = buffer_temp[intf];
++				i = 0;
++				intf++;
++				hdd_ctx->num_provisioned_addr++;
++				if (intf >= QDF_MAX_CONCURRENCY_PERSONA)
++					break;
++			}
++		}
++		bufferPtr++;
+ 	}
+ 
+-	qdf_status = update_mac_from_string(hdd_ctx, &mac_table[0], i);
+-	if (QDF_IS_STATUS_ERROR(qdf_status)) {
+-		hdd_err("Invalid MAC addresses provided");
+-		goto config_exit;
+-	}
+-	hdd_ctx->num_provisioned_addr = i;
+-	hdd_debug("Populating remaining %d Mac addresses",
+-		   max_mac_addr - i);
+-	hdd_populate_random_mac_addr(hdd_ctx, max_mac_addr - i);
+-
+-	if (hdd_ctx->num_provisioned_addr)
+-		qdf_mem_copy(custom_mac_addr.bytes,
+-			     &hdd_ctx->provisioned_mac_addr[0].bytes[0],
+-			     sizeof(custom_mac_addr));
+-	else
+-		qdf_mem_copy(custom_mac_addr.bytes,
+-			     &hdd_ctx->derived_mac_addr[0].bytes[0],
+-			     sizeof(custom_mac_addr));
++	for (i = 0; i < intf; i++)
++		hdd_err("Mac address table from utag: [%s][%s]", macTable[i].name, macTable[i].value);
+ 
+-	qdf_status = sme_set_custom_mac_addr(custom_mac_addr.bytes);
++	update_mac_from_string(hdd_ctx, &macTable[0], intf);
++	hdd_populate_random_mac_addr(hdd_ctx, QDF_MAX_CONCURRENCY_PERSONA - intf);
++	qdf_mem_copy(&customMacAddr, &hdd_ctx->provisioned_mac_addr[0].bytes[0],
++			sizeof(tSirMacAddr));
++	sme_set_custom_mac_addr(customMacAddr);
+ 
+ config_exit:
+-	qdf_mem_free(temp);
+-	release_firmware(fw);
++
+ 	return qdf_status;
+ }
+ #else

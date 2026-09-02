@@ -352,6 +352,11 @@ own numbers that is a 40°C rather than 42°C first mitigation point during came
 use. You are unlikely to notice it in ordinary use, and it is not an overheating
 risk. README explains why it cannot be fixed.
 
+**USB file transfer (MTP) does not work.** Picking "File transfer" in the USB
+notification has no effect — USB stays charging + adb, and the host never sees an
+MTP interface. Use `adb push` / `adb pull` meanwhile. Not yet root-caused; the
+measurements are in the README.
+
 A few things that get reported as bugs are hardware behaviour, identical on
 stock: no OIS on the telephoto lens (so a zoomed photo preview shakes), and face
 unlock not being accepted for payments (the sensor is a 2D camera).

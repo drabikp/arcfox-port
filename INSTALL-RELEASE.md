@@ -172,13 +172,40 @@ then a few minutes of installing. `Total xfer: 1.00x` means the file was sent.
 The phone installs onto the *other* slot and switches to it, so if you started
 on slot `a` you will boot on `b`. That is correct.
 
-### 5. Reboot
-
-On the phone: **Reboot system now**. First boot takes 2–3 minutes.
+### 5. Wipe data — do not skip this
 
 If recovery asks *"To install additional packages, you need to reboot recovery
-first"*, that means your package installed. Decline unless you actually have
-another package to flash.
+first"*, that means your package installed. Decline it.
+
+**You must now erase `/data`.** Coming from a stock install that has been booted
+even once, skipping this leaves the phone in a state where **no app can reach
+the network** — the browser reports `ERR_INTERNET_DISCONNECTED` while the phone
+is plainly online. See [the explanation below](#after-installing-apps-have-no-internet).
+
+Either route works:
+
+- **From recovery:** Factory reset → **Format data**.
+- **From the bootloader** (no menu taps):
+
+  ```bash
+  adb reboot bootloader          # needs Advanced -> Enable ADB again first
+  fastboot -w                    # erases userdata + metadata
+  fastboot reboot
+  ```
+
+  `fastboot -w` prints `Erase successful, but not automatically formatting` and
+  `File system type raw not supported` — both are normal. The system formats
+  the partitions on the next boot.
+
+### 6. First boot
+
+The phone reboots **twice** after the wipe — once to format `/data`, then into
+the system. First boot takes 2–3 minutes. Expect the setup wizard.
+
+USB debugging is off again after the wipe (it lives in `/data`), so you will
+need to re-enable it through Developer options if you want adb afterwards.
+Confirming the on-screen "Allow USB debugging" prompt during the reboots is not
+enough on its own.
 
 ---
 
@@ -213,41 +240,41 @@ someone chasing a bug that was not there:
 
 Symptom: the browser shows `net::ERR_INTERNET_DISCONNECTED` or
 `ERR_NAME_NOT_RESOLVED`, and other apps behave as though offline — while the
-status bar shows a normal 5G/LTE or Wi-Fi connection, and the phone really is
-online (`adb shell ping` and `curl` from a shell both work fine).
+status bar shows a normal 5G/LTE connection and the phone really is online
+(`adb shell ping` and `curl` from a shell both work).
 
-That contrast is the tell: `adb shell` runs as uid 2000 and bypasses the
-per-app network firewall, so shell tests pass while every ordinary app is
-blocked.
+That contrast is the tell: `adb shell` runs as uid 2000 and bypasses the per-app
+network firewall, so shell tests pass while every ordinary app is blocked.
 
-**Cause — upstream LineageOS behaviour, not specific to this port.**
-`LineageSettingsProvider` turns on *restricted networking mode* when it first
-creates its database, which puts the network firewall into deny-by-default
-(allowlist) mode. The code that used to populate the allowlist was removed
-upstream (`lineage-sdk` f7c44fc8, "Clear restricted networking mode allowlist —
-Replaced by POLICY_REJECT_ALL"), and the migration in
-`NetworkPolicyManagerService` then marks every uid that is not on that
-now-empty allowlist with `POLICY_REJECT_ALL`. The result on a fresh install is
-ordinary apps with no network at all.
+**Cause: `/data` was not erased during the install.** Stock Android leaves
+`/data/system/netpolicy.xml` behind, stamped `version="14"` and with no
+`lineageVersion` attribute. LineageOS reads that, concludes it is upgrading an
+existing system rather than installing fresh, and runs a migration that denies
+network to every app not on an allow-list — an allow-list that upstream no
+longer populates. On a genuinely fresh `/data` the file does not exist, the
+migration is skipped entirely, and everything works.
 
-Measured on this device after a clean install:
+Measured on this device, same zip both times:
 
-```
-restricted_networking_mode = 1
-Restricted networking mode: true
-UID=10495 policy=262144 (REJECT_ALL)          # org.lineageos.jelly
-blocked_state={blocked=RESTRICTED_MODE|APP_BACKGROUND}
-```
+| | apps blocked | browser |
+|---|---|---|
+| installed without wiping `/data` | 21 | dead |
+| installed with `fastboot -w` | 3 | works |
 
-**Fix**, verified — apps regain network immediately, no reboot needed:
+The three that remain are apps with no INTERNET permission, which is correct.
+
+**Fix — wipe `/data`** as in step 5. That is the real fix and it is what the
+install procedure now does.
+
+**Rescue, if the phone is already installed and you do not want to wipe:**
 
 ```bash
 adb -s <serial> shell settings put global restricted_networking_mode 0
 ```
 
-Per-app network access also has a UI, under **Settings → Apps → <app> →
-Mobile data & Wi-Fi**, if you would rather grant it selectively than turn the
-mode off.
+This works immediately and survives reboots, but it is a blunt instrument: that
+mode is also what powers LineageOS's per-app "block network access" feature, so
+turning it off disables that feature too. Prefer the wipe.
 
 **One message that is a real failure:**
 
@@ -281,9 +308,19 @@ negotiates at full speed, means the cable or hub.
 
 ## What you get
 
-See [README.md](README.md) for what works and what does not. In short: telephony
-including VoLTE and VoWiFi, both displays and both touchscreens, all 8 cameras,
-WiFi, Bluetooth, NFC, fingerprint, sensors and fold postures all work. Thermal
-profile switching does not. A few things that get reported as bugs — no OIS on
-the telephoto lens, face unlock not being accepted for payments — are hardware
-behaviour and are identical on stock.
+See [README.md](README.md) for the full list. In short: telephony including
+VoLTE and VoWiFi, both displays and both touchscreens, all 8 cameras, WiFi,
+Bluetooth, NFC, fingerprint, sensors and fold postures all work.
+
+The one functional difference from stock is that **thermal profile switching
+does not happen**. Thermal protection itself is fine — the phone still throttles
+and protects itself normally — but stock's per-situation tuning (a separate
+profile for camera, gaming and so on) is not applied, so under sustained heavy
+load the phone starts easing off slightly sooner than stock would. In stock's
+own numbers that is a 40°C rather than 42°C first mitigation point during camera
+use. You are unlikely to notice it in ordinary use, and it is not an overheating
+risk. README explains why it cannot be fixed.
+
+A few things that get reported as bugs are hardware behaviour, identical on
+stock: no OIS on the telephoto lens (so a zoomed photo preview shakes), and face
+unlock not being accepted for payments (the sensor is a 2D camera).

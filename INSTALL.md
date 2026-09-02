@@ -192,25 +192,38 @@ Repack it with `build-super-mix.sh all` and confirm the `=== composition ===`
 block prints `OURS` six times, or you will flash a stale system while every
 step reports success.
 
-## 4. About wiping /data
+## 4. Wiping /data is mandatory
 
-`/data` must be empty when you cross between stock and LineageOS. It is not a
-precaution: carrying an existing `/data` across bootloops with
-`init_user0_failed`, because the encryption metadata does not survive the
-crossing.
+`/data` must be erased when you cross between stock and LineageOS. Two separate
+reasons, and the second one is easy to miss because the phone boots fine
+without it:
 
-**Following section 2 then section 3, you do not need a separate wipe.**
-Motorola's flash sequence already erases `userdata` and `metadata`, so `/data`
-is blank by the time LineageOS first boots. Measured: the sideload above booted
-straight to a working system with no manual format.
+1. **Encryption metadata does not survive the crossing.** Carrying an existing
+   `/data` across bootloops with `init_user0_failed`.
+2. **Stock leaves a network-policy file behind.** `/data/system/netpolicy.xml`
+   is stamped `version="14"` with no `lineageVersion`; LineageOS reads it,
+   concludes it is upgrading rather than installing fresh, and runs a migration
+   that denies network access to every app not on an allow-list it no longer
+   populates. The phone boots and looks healthy, the status bar shows a data
+   connection, `adb shell ping` works — and no app can reach the network.
 
-**If you are sideloading onto a phone that already has data** — an existing
-LineageOS, or a stock install you did not just reflash — wipe it explicitly,
-either from recovery (**Factory reset -> Format data**) or from the bootloader:
+Measured with the same package: installed without wiping, 21 uids blocked and a
+dead browser; installed with `fastboot -w`, 3 uids blocked (apps genuinely
+lacking INTERNET permission) and everything works.
+
+⚠️ **An erased `userdata` partition is not enough if stock has since booted.**
+Section 2 erases `userdata`, but booting stock afterwards recreates the file.
+What matters is that `/data` is empty at the moment LineageOS first boots.
+
+From recovery: **Factory reset -> Format data**. From the bootloader:
 
 ```bash
 fastboot -w
 ```
+
+`Erase successful, but not automatically formatting` and `File system type raw
+not supported` are both normal; the system formats on the next boot, and the
+phone reboots twice before reaching the setup wizard.
 
 ## 5. If something goes wrong
 

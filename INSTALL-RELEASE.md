@@ -356,12 +356,6 @@ risk. README explains why it cannot be fixed.
 device has no UVC composition at all. **RNDIS tethering does not apply**; use NCM,
 which is what Android picks for USB tethering anyway and which works.
 
-⚠️ **File transfer needs a build newer than 2026-09-02 20:21.** Earlier builds had
-*every* USB mode switch broken — selecting "File transfer" did nothing and the
-phone stayed on charging + adb. Fixed in device/motorola/sm8635-common `aa7bfc5`;
-MTP, PTP and NCM tethering are verified working after it. If you are on an older
-build, `adb push` / `adb pull` still work.
-
 A few things that get reported as bugs are hardware behaviour, identical on
 stock: no OIS on the telephoto lens (so a zoomed photo preview shakes), and face
 unlock not being accepted for payments (the sensor is a 2D camera).

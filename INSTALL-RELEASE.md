@@ -182,11 +182,20 @@ even once, skipping this leaves the phone in a state where **no app can reach
 the network** — the browser reports `ERR_INTERNET_DISCONNECTED` while the phone
 is plainly online. See [the explanation below](#after-installing-apps-have-no-internet).
 
-Two routes. **The bootloader one is what was tested here**; the recovery menu is
-the equivalent standard route but was not exercised in this round, so follow the
-first if you want the path with evidence behind it.
+Two routes, **both tested end to end from stock on this device** and both
+producing an identical result (blocked-uid count back to normal, browser
+working, `restricted_networking_mode` left at its upstream default). Use
+whichever you prefer.
 
-**From the bootloader** (this is the tested one):
+**From recovery** (no computer needed):
+
+> **Factory Reset → Format Data/Factory Reset → Format Data**, confirm it,
+> then go back and choose **Reboot system now**.
+
+Note the middle level — it is three menus deep, not two. Do not forget the
+reboot: formatting leaves you sitting in recovery.
+
+**From the bootloader** (no menu taps):
 
 ```bash
 adb reboot bootloader          # needs Advanced -> Enable ADB again first
@@ -199,19 +208,26 @@ fastboot reboot
 partitions on the next boot. Observed here: the phone then reboots **twice**,
 once to format `/data` and once into the system.
 
-**From recovery** (menu equivalent): Factory reset → **Format data**, confirm,
-then go back and choose **Reboot system now**. Do not forget the reboot — the
-format leaves you sitting in recovery.
-
 ### 6. First boot
 
 First boot takes 2–3 minutes and lands on the setup wizard.
 
-USB debugging is off again after the wipe (it lives in `/data`), so you will
-need to re-enable it through Developer options if you want adb afterwards.
-Confirming an on-screen "Allow USB debugging" prompt during the reboots is not
-enough on its own — that only re-approves the computer's key, it does not turn
-the developer setting back on.
+**Finish the wizard and allow mobile data (or connect Wi-Fi) before judging
+anything.** Until you do, the phone has no default network at all and every app
+reports `ERR_INTERNET_DISCONNECTED` — which looks exactly like the problem
+described below but is not it. The difference is that with no network *nothing*
+works, including `adb shell curl`; with the real problem the shell works and
+only apps fail.
+
+⚠️ **This build has USB debugging ON out of the box.** It is a `userdebug`
+build, and Android enables adb by default on those, so a freshly installed
+phone will ask to authorise any computer it is plugged into — including at the
+"Welcome to LineageOS" screen. You do **not** need to allow it; decline it
+unless you want adb. An official LineageOS `user` build would not do this.
+
+If you do want adb later, note that confirming that prompt only approves the
+computer's key. It does not by itself guarantee the developer setting is on —
+check Developer options.
 
 ---
 

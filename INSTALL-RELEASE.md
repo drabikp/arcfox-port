@@ -208,9 +208,14 @@ fastboot reboot
 
 `fastboot -w` prints `Erase successful, but not automatically formatting` and
 `File system type raw not supported` — both are normal. The system formats the
-partitions on the next boot. This route therefore reboots **twice**: once for the
-system to format `/data`, then again into the system proper. Both counts were
-observed from the host by watching the phone drop off USB and re-enumerate.
+partitions on the next boot. This route therefore reboots **twice**: the first
+boot formats `/data`, runs for well under a minute and then restarts on its own;
+the second is the real one. Do not mistake that first short boot for the finished
+install, and do not interrupt it.
+
+Both routes' reboot counts were measured from the host by logging kernel USB
+attach/detach events, not by watching the screen — two attach events for this
+route, one for the recovery route.
 
 ### 6. First boot
 

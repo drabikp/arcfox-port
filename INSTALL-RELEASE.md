@@ -182,30 +182,36 @@ even once, skipping this leaves the phone in a state where **no app can reach
 the network** — the browser reports `ERR_INTERNET_DISCONNECTED` while the phone
 is plainly online. See [the explanation below](#after-installing-apps-have-no-internet).
 
-Either route works:
+Two routes. **The bootloader one is what was tested here**; the recovery menu is
+the equivalent standard route but was not exercised in this round, so follow the
+first if you want the path with evidence behind it.
 
-- **From recovery:** Factory reset → **Format data**.
-- **From the bootloader** (no menu taps):
+**From the bootloader** (this is the tested one):
 
-  ```bash
-  adb reboot bootloader          # needs Advanced -> Enable ADB again first
-  fastboot -w                    # erases userdata + metadata
-  fastboot reboot
-  ```
+```bash
+adb reboot bootloader          # needs Advanced -> Enable ADB again first
+fastboot -w                    # erases userdata + metadata
+fastboot reboot
+```
 
-  `fastboot -w` prints `Erase successful, but not automatically formatting` and
-  `File system type raw not supported` — both are normal. The system formats
-  the partitions on the next boot.
+`fastboot -w` prints `Erase successful, but not automatically formatting` and
+`File system type raw not supported` — both are normal. The system formats the
+partitions on the next boot. Observed here: the phone then reboots **twice**,
+once to format `/data` and once into the system.
+
+**From recovery** (menu equivalent): Factory reset → **Format data**, confirm,
+then go back and choose **Reboot system now**. Do not forget the reboot — the
+format leaves you sitting in recovery.
 
 ### 6. First boot
 
-The phone reboots **twice** after the wipe — once to format `/data`, then into
-the system. First boot takes 2–3 minutes. Expect the setup wizard.
+First boot takes 2–3 minutes and lands on the setup wizard.
 
 USB debugging is off again after the wipe (it lives in `/data`), so you will
 need to re-enable it through Developer options if you want adb afterwards.
-Confirming the on-screen "Allow USB debugging" prompt during the reboots is not
-enough on its own.
+Confirming an on-screen "Allow USB debugging" prompt during the reboots is not
+enough on its own — that only re-approves the computer's key, it does not turn
+the developer setting back on.
 
 ---
 

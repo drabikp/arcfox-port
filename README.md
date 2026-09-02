@@ -12,6 +12,7 @@ engineering notes.
 > `vendor/motorola/` is extracted from a Motorola firmware package you supply.
 > See [Blobs](#4-blobs) below.
 
+**[Discussion on XDA (with links to current build)](https://xdaforums.com/t/rom-unofficial-android-16-lineageos-23-2-motorola-razr-50-ultra-arcfox.4800393/)**
 ---
 
 ## What works

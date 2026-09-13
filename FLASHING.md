@@ -182,6 +182,30 @@ Encryption keys change with the ROM. Skipping the userdata wipe bootloops with
 `init_user0_failed`. This device is a test unit, not a daily driver — wiping is
 fine, but say so before doing it.
 
+## Rule 7 — Test recovery on OUR boot chain, and never arm `fastboot reboot recovery` blind
+
+Recovery on arcfox = the slot's `boot` kernel + that slot's `vendor_boot` ramdisk
+(modules.load.recovery, 277 entries) + the `recovery` partition's ramdisk. The
+fresh-from-stock install boots recovery on top of STOCK boot/vendor_boot, so
+"recovery works" measured there says nothing about the slot the ROM lands on.
+Measured 2026-09-10: with our 20260902 boot chain on slot b, EVERY recovery
+image looped — stock's and ours — silently, with nothing on USB, because our
+vendor_boot staged only the 99 normal-boot modules and first-stage init
+LOG(FATAL)s on the first missing recovery-list entry. Fixed in
+BoardConfigCommon.mk (BOOT_KERNEL_MODULES stages the union, 282 .ko like
+stock); the OTA payload now also carries `recovery` and `vbmeta_system`.
+
+Two consequences:
+
+- Any recovery test must run on a slot whose boot chain is ours: sideload,
+  accept the "reboot recovery" prompt, and prove the slot with
+  `adb shell getprop ro.boot.slot_suffix` from that recovery (Enable ADB first).
+- `fastboot reboot recovery` ARMS A STICKY REQUEST in this bootloader. If that
+  recovery cannot start, a plain `fastboot reboot` re-enters the loop too.
+  Escape: `fastboot --set-active=<slot whose recovery boots>`, `fastboot reboot`
+  — the recovery that starts clears the request — then switch back. Do not
+  `fastboot erase misc` for this.
+
 ---
 
 ## The procedure

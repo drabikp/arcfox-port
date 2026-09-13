@@ -179,9 +179,10 @@ Output: `out/target/product/arcfox/lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
 - **Installing what you just built, or returning to stock?** →
   [INSTALL.md](INSTALL.md)
 - **Want the rules and the reasoning?** → [FLASHING.md](FLASHING.md)
+- **Google Apps?** → [GAPPS.md](GAPPS.md) — tested with MindTheGapps 16 on build 20260913
 
 ⚠️ The install has only been tested onto stock **W1UXS36H.72-45-10-7**. The
-package writes 11 partitions and none of them are firmware — the modem,
+package writes 13 partitions and none of them are firmware — the modem,
 bootloader, DSP and Bluetooth firmware stay whatever the phone already has, and
 the vendor blobs were extracted from that train.
 

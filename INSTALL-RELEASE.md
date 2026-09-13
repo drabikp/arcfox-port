@@ -175,7 +175,10 @@ on slot `a` you will boot on `b`. That is correct.
 ### 5. Wipe data — do not skip this
 
 If recovery asks *"To install additional packages, you need to reboot recovery
-first"*, that means your package installed. Decline it.
+first"*, that means your package installed. If you only want LineageOS, decline
+it and carry on. If you want to add a second package such as GApps, see
+[Installing GApps or other add-ons](#installing-gapps-or-other-add-ons) below —
+the order matters, because the wipe must come **after** the add-on.
 
 **You must now erase `/data`.** Coming from a stock install that has been booted
 even once, skipping this leaves the phone in a state where **no app can reach
@@ -228,17 +231,18 @@ described below but is not it. The difference is that with no network *nothing*
 works, including `adb shell curl`; with the real problem the shell works and
 only apps fail.
 
-⚠️ **This build has USB debugging ON out of the box.** It is a `userdebug`
-build, and Android enables adb by default on those, so a freshly installed
-phone will ask to authorise any computer it is plugged into — including at the
-"Welcome to LineageOS" screen. You do **not** need to allow it; decline it
-unless you want adb. An official LineageOS `user` build would not do this.
+**USB debugging is off by default**, as on official LineageOS builds. This is
+a `userdebug` build, so `adb root` works once you turn debugging on, but nothing
+is enabled until you do: Settings → About phone → tap **Build number** seven
+times → Developer options → USB debugging. The setting persists across reboots
+in both directions.
 
-If you do want adb later, note that confirming that prompt only approves the
-computer's key. It does not by itself guarantee the developer setting is on —
-check Developer options.
-
----
+Builds before 20260913 behaved differently: debugging was forced on at every
+boot, and on some boots the toggle came up **off** with the phone invisible to
+adb until you toggled it back on, a cable replug not helping. That was a race
+between the ROM's restore of the USB configuration and Motorola's init blanking
+it. 20260913 restores Motorola's own saved value instead, which is what stock
+does, and the race is gone.
 
 ## Confirming it worked
 

@@ -1,33 +1,33 @@
-From cf9551560461f092bd47d19ca1ad9787aea738ff Mon Sep 17 00:00:00 2001
+From 42ed06305a6755bba7cc3064e885faa1f8de21a2 Mon Sep 17 00:00:00 2001
 From: Peter Drabik <drabikp@posam.sk>
 Date: Mon, 14 Sep 2026 10:54:23 +0200
 Subject: [PATCH] Device hooks for panels with a physically covered bottom
  corner
 
-Two dimensions, both 0dp by default, for a cover display whose bottom corner is
-occluded by a rear camera block (Motorola razr 50 ultra: 495x349 px at the
-bottom right of a 1080x1272 panel):
+Three resource-gated hooks, all default off, for a device whose display has
+a camera block inside the panel at the bottom (a flip phone's cover display):
 
-- hotseat_bar_bottom_space_extra: added to hotseatBarBottomSpacePx so the dock
-  can sit above the covered area.
-- taskbar_ime_bottom_inset_override: the taskbar's navigationBars provider gets
-  an InsetsSizeOverride for TYPE_INPUT_METHOD (portrait only), so the keyboard
-  positions itself above the covered area while apps and the launcher keep the
-  real bar height. Same mechanism the taskbar already uses for the assistant
-  window.
+- hotseat_bar_bottom_space_extra: extra bottom space under the hotseat so
+  the dock sits above the covered area.
+- taskbar_ime_bottom_inset_override (+ _enabled): report a larger
+  navigationBars inset to the IME window only, so the keyboard's bottom row
+  sits above the covered area while apps keep the real bar height. The
+  override entry is always present once enabled and only its size varies;
+  WindowManager rejects a relayout that changes the set of override types
+  after the window is added, and the taskbar window survives fold/unfold
+  display switches.
+- all_apps_ignore_workspace_scale: keep the all-apps grid at its configured
+  size when the workspace is scaled down to fit a short panel. All-apps
+  scrolls and never has to fit; on a 565dp panel sharing a 4x5 grid the
+  upstream behaviour gave 37dp icons with 7dp labels.
 
-Declaring the block as a display cutout is not an option on AOSP: a bottom-edge
-cutout becomes a full-width safe inset and every edge-to-edge app ends its
-scroll views above it, so 27% of the panel cannot start a scroll.
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_014XqRMfq23vyPvEKawNza11
 Change-Id: I10c4b06c2848bd43a2e912682909c151084602d8
 ---
  .../taskbar/TaskbarInsetsController.kt        | 25 +++++++++++++++++++
- res/values/dimens.xml                         |  8 ++++++
+ res/values/dimens.xml                         | 11 ++++++++
  src/com/android/launcher3/DeviceProfile.java  |  3 +++
- 3 files changed, 36 insertions(+)
+ .../launcher3/deviceprofile/AllAppsProfile.kt | 14 ++++++++---
+ 4 files changed, 50 insertions(+), 3 deletions(-)
 
 diff --git a/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt b/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
 index 0c8326072f..ec12a8ca08 100644
@@ -79,10 +79,10 @@ index 0c8326072f..ec12a8ca08 100644
              if (context.isThreeButtonNav) {
                  provider.insetsSize =
 diff --git a/res/values/dimens.xml b/res/values/dimens.xml
-index 4aaf95efb3..b33b4c4cec 100644
+index 4aaf95efb3..9fcf34c669 100644
 --- a/res/values/dimens.xml
 +++ b/res/values/dimens.xml
-@@ -454,6 +454,14 @@
+@@ -454,6 +454,17 @@
  
      <!-- Taskbar related (placeholders to compile in Launcher3 without Quickstep) -->
      <dimen name="taskbar_size">0dp</dimen>
@@ -94,6 +94,9 @@ index 4aaf95efb3..b33b4c4cec 100644
 +    <dimen name="taskbar_ime_bottom_inset_override">0dp</dimen>
 +    <!-- Must be the same on every panel of a device (see TaskbarInsetsController). -->
 +    <bool name="taskbar_ime_bottom_inset_override_enabled">false</bool>
++    <!-- Keep the all-apps grid at its configured size on panels where the workspace
++         has to be scaled down to fit (see AllAppsProfile). -->
++    <bool name="all_apps_ignore_workspace_scale">false</bool>
      <dimen name="taskbar_phone_size">@*android:dimen/navigation_bar_frame_height</dimen>
      <dimen name="taskbar_phone_home_button_size">80dp</dimen>
      <dimen name="taskbar_phone_content_padding">8dp</dimen>
@@ -111,6 +114,38 @@ index ce25f40ce6..281af28680 100644
  
          if (mIsResponsiveGrid) {
              updateHotseatSizes(mResponsiveWorkspaceCellSpec.getIconSize());
+diff --git a/src/com/android/launcher3/deviceprofile/AllAppsProfile.kt b/src/com/android/launcher3/deviceprofile/AllAppsProfile.kt
+index b69e35d931..f4f885ae3f 100644
+--- a/src/com/android/launcher3/deviceprofile/AllAppsProfile.kt
++++ b/src/com/android/launcher3/deviceprofile/AllAppsProfile.kt
+@@ -134,8 +134,15 @@ data class AllAppsProfile(
+             typeIndex: Int,
+             scale: Float,
+         ): AllAppsProfile {
+-            val allAppsBorderSpacePx = calculateAllAppsBorderSpacePx(inv, metric, typeIndex, scale)
+-            val allAppsIconSizePx = max(1, pxFromDp(inv.allAppsIconSize[typeIndex], metric, scale))
++            // Device hook: a panel too short for the workspace grid gets a scale-to-fit
++            // factor that upstream also applies to the all-apps grid, although all-apps
++            // scrolls and never has to fit. Let a device keep the drawer at full size.
++            val allAppsScale =
++                if (res.getBoolean(R.bool.all_apps_ignore_workspace_scale)) 1f else scale
++            val allAppsBorderSpacePx =
++                calculateAllAppsBorderSpacePx(inv, metric, typeIndex, allAppsScale)
++            val allAppsIconSizePx =
++                max(1, pxFromDp(inv.allAppsIconSize[typeIndex], metric, allAppsScale))
+             val allAppsIconDrawablePaddingPx =
+                 res.getDimensionPixelSize(R.dimen.all_apps_icon_drawable_padding)
+             return AllAppsProfile(
+@@ -148,7 +155,8 @@ data class AllAppsProfile(
+                 iconSizePx = allAppsIconSizePx,
+                 // We need the double conversion to keep the original behaviour
+                 iconTextSizePx =
+-                    (pxFromSp(inv.allAppsIconTextSize[typeIndex], metric).toFloat() * scale)
++                    (pxFromSp(inv.allAppsIconTextSize[typeIndex], metric).toFloat() *
++                            allAppsScale)
+                         .toInt()
+                         .toFloat(),
+                 iconDrawablePaddingPx = allAppsIconDrawablePaddingPx,
 -- 
 2.54.0
 

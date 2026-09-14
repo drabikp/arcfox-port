@@ -131,8 +131,9 @@ The root `Android.mk` is deliberately empty — it stops `kati` descending into
 the techpack DLKM wrappers, which are built out of tree by
 `vendor/lineage/build/tasks/kernel.mk`.
 
-One platform patch is carried the same way. Launcher3 needs the two device
-hooks that keep the cover display's keyboard and dock above the camera block:
+One platform patch is carried the same way. Launcher3 needs the device hooks
+that keep the cover display's keyboard and dock above the camera block and its
+app drawer at full size:
 
 ```bash
 git -C packages/apps/Launcher3 apply arcfox-port/patches/launcher3/cover-display-camera-block-hooks.patch
@@ -209,7 +210,7 @@ Two rules that cost real time here:
 |---|---|
 | `local_manifest/arcfox.xml` | the `repo` manifest that assembles the whole tree |
 | `scripts/` | kernel assembly, firmware extraction, blob resolution, build and boot-test helpers |
-| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, and Launcher3 (cover-display camera block: keyboard and dock kept above the cameras) |
+| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, and Launcher3 (cover-display camera block: keyboard and dock kept above the cameras, app drawer kept at full size) |
 | `kernel-modules-root/` | the `Android.bp`/`Android.mk` stubs for `sm8635-modules/` |
 | `INSTALL-RELEASE.md` | installing a downloaded build (start here as a user) |
 | `INSTALL.md` | installing your own build, and returning to stock |

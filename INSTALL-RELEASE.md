@@ -254,7 +254,8 @@ for every app: nothing scrolls from there and it looks like a huge bezel. So
 this build does **not** declare it. Apps use the whole panel, and two things
 that would otherwise land behind the cameras are moved: the keyboard's bottom
 row stays above the block in portrait, and the launcher's dock sits above it
-(which makes the cover home screen a bit cramped). What is left is expected:
+(which makes the cover home screen a bit cramped; the app drawer keeps its
+normal icon size). What is left is expected:
 
 - apps with a button in the bottom-right corner have it behind the cameras on
   the cover; rotate the phone or use the inner display for those
@@ -263,7 +264,7 @@ row stays above the block in portrait, and the launcher's dock sits above it
   orientations the block covers the bottom-left corner
 
 This is the same trade-off every AOSP-based ROM faces on this hardware; if a
-better general solution appears upstream it will replace these two tweaks.
+better general solution appears upstream it will replace these tweaks.
 
 ## Confirming it worked
 

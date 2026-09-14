@@ -1,0 +1,76 @@
+diff --git a/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt b/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
+index 0c8326072f..21ccf854ae 100644
+--- a/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
++++ b/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
+@@ -42,12 +42,14 @@ import android.view.WindowInsets.Type.navigationBars
+ import android.view.WindowInsets.Type.systemGestures
+ import android.view.WindowInsets.Type.tappableElement
+ import android.view.WindowManager
++import android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD
+ import android.view.WindowManager.LayoutParams.TYPE_VOICE_INTERACTION
+ import androidx.annotation.VisibleForTesting
+ import androidx.core.graphics.toRegion
+ import com.android.app.tracing.traceSection
+ import com.android.internal.policy.GestureNavigationSettingsObserver
+ import com.android.launcher3.DeviceProfile
++import com.android.launcher3.R
+ import com.android.launcher3.anim.AlphaUpdateListener
+ import com.android.launcher3.taskbar.TaskbarControllers.LoggableTaskbarController
+ import com.android.launcher3.taskbar.TaskbarInsetsController.DebugTouchableRegion.Companion.DEFAULT_TOUCH_REGION
+@@ -238,6 +240,25 @@ class TaskbarInsetsController(val context: TaskbarActivityContext) : LoggableTas
+         val res = context.resources
+         if (provider.type == navigationBars()) {
+             provider.insetsSize = getInsetsForGravityWithCutout(contentHeight, gravity, endRotation)
++            // Device hook: report a larger bottom inset to the IME window only, so the keyboard
++            // stays clear of a physically covered bottom corner (cover display camera block).
++            // Portrait (ROTATION_0) only: in landscape the covered corner is at the top or
++            // the far left, not under the keyboard's main rows. Apps and the launcher keep
++            // the real bar height in every rotation.
++            val imeOverride = res.getDimensionPixelSize(R.dimen.taskbar_ime_bottom_inset_override)
++            if (
++                imeOverride > 0 &&
++                    endRotation == Surface.ROTATION_0 &&
++                    (gravity and Gravity.BOTTOM) == Gravity.BOTTOM
++            ) {
++                provider.insetsSizeOverrides =
++                    arrayOf(
++                        InsetsFrameProvider.InsetsSizeOverride(
++                            TYPE_INPUT_METHOD,
++                            Insets.of(0, 0, 0, maxOf(contentHeight, imeOverride)),
++                        )
++                    )
++            }
+         } else if (provider.type == mandatorySystemGestures()) {
+             if (context.isThreeButtonNav) {
+                 provider.insetsSize =
+diff --git a/res/values/dimens.xml b/res/values/dimens.xml
+index 4aaf95efb3..c857916056 100644
+--- a/res/values/dimens.xml
++++ b/res/values/dimens.xml
+@@ -454,6 +454,12 @@
+ 
+     <!-- Taskbar related (placeholders to compile in Launcher3 without Quickstep) -->
+     <dimen name="taskbar_size">0dp</dimen>
++    <!-- Device hooks for panels whose bottom corner is physically covered (cover display
++         with a rear camera block): extra bottom space under the hotseat, and a larger
++         navigationBars inset reported to the IME window only, so the keyboard sits above
++         the covered area while apps keep the real bar height. Both default to 0dp. -->
++    <dimen name="hotseat_bar_bottom_space_extra">0dp</dimen>
++    <dimen name="taskbar_ime_bottom_inset_override">0dp</dimen>
+     <dimen name="taskbar_phone_size">@*android:dimen/navigation_bar_frame_height</dimen>
+     <dimen name="taskbar_phone_home_button_size">80dp</dimen>
+     <dimen name="taskbar_phone_content_padding">8dp</dimen>
+diff --git a/src/com/android/launcher3/DeviceProfile.java b/src/com/android/launcher3/DeviceProfile.java
+index ce25f40ce6..281af28680 100644
+--- a/src/com/android/launcher3/DeviceProfile.java
++++ b/src/com/android/launcher3/DeviceProfile.java
+@@ -400,6 +400,9 @@ public class DeviceProfile {
+                 hotseatBarBottomSpacePx = hotseatBarBottomSpace;
+             }
+         }
++        // Device hook: extra space under the hotseat, for panels whose bottom corner is
++        // physically covered (e.g. a cover display with a rear camera block). Default 0dp.
++        hotseatBarBottomSpacePx += res.getDimensionPixelSize(R.dimen.hotseat_bar_bottom_space_extra);
+ 
+         if (mIsResponsiveGrid) {
+             updateHotseatSizes(mResponsiveWorkspaceCellSpec.getIconSize());

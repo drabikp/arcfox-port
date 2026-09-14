@@ -179,7 +179,7 @@ Output: `out/target/product/arcfox/lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
 - **Installing what you just built, or returning to stock?** →
   [INSTALL.md](INSTALL.md)
 - **Want the rules and the reasoning?** → [FLASHING.md](FLASHING.md)
-- **Google Apps?** → [GAPPS.md](GAPPS.md) — tested with MindTheGapps 16 on build 20260913
+- **Google Apps?** → [GAPPS.md](GAPPS.md) — tested with MindTheGapps 16 on build 20260914
 
 ⚠️ The install has only been tested onto stock **W1UXS36H.72-45-10-7**. The
 package writes 13 partitions and none of them are firmware — the modem,
@@ -202,7 +202,7 @@ Two rules that cost real time here:
 |---|---|
 | `local_manifest/arcfox.xml` | the `repo` manifest that assembles the whole tree |
 | `scripts/` | kernel assembly, firmware extraction, blob resolution, build and boot-test helpers |
-| `patches/` | out-of-tree patches for display-drivers, wlan and camera-kernel |
+| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, and Launcher3 (cover-display camera block: keyboard and dock kept above the cameras) |
 | `kernel-modules-root/` | the `Android.bp`/`Android.mk` stubs for `sm8635-modules/` |
 | `INSTALL-RELEASE.md` | installing a downloaded build (start here as a user) |
 | `INSTALL.md` | installing your own build, and returning to stock |

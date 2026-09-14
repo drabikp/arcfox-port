@@ -131,6 +131,13 @@ The root `Android.mk` is deliberately empty — it stops `kati` descending into
 the techpack DLKM wrappers, which are built out of tree by
 `vendor/lineage/build/tasks/kernel.mk`.
 
+One platform patch is carried the same way. Launcher3 needs the two device
+hooks that keep the cover display's keyboard and dock above the camera block:
+
+```bash
+git -C packages/apps/Launcher3 apply arcfox-port/patches/launcher3/cover-display-camera-block-hooks.patch
+```
+
 ### 3. Firmware
 
 Get a stock firmware package for the **W1UXS36H.72-45-10-7** train. Motorola's

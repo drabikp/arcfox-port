@@ -22,7 +22,7 @@ Verified on a flashed build, cold-booted:
 | | |
 |---|---|
 | Telephony | VoLTE (calls stay on IMS, no SRVCC), VoWiFi, mobile data, SMS, emergency calling |
-| Display | both panels (inner 1080x2640 + cover), posture-driven routing, wake on open |
+| Display | both panels (inner 1080x2640 + cover), posture-driven routing, wake on open, fold behaviour setting (Always / Swipe up / Never) |
 | Input | both touchscreens, double-tap-to-wake on each |
 | Camera | 3 cameras, API1 and API2, video recording |
 | Sensors | 79 sensors, all fold postures commit |
@@ -210,7 +210,7 @@ Two rules that cost real time here:
 |---|---|
 | `local_manifest/arcfox.xml` | the `repo` manifest that assembles the whole tree |
 | `scripts/` | kernel assembly, firmware extraction, blob resolution, build and boot-test helpers |
-| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, and Launcher3 (cover-display camera block: keyboard and dock kept above the cameras, app drawer kept at full size) |
+| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, and Launcher3 (cover-display camera block: keyboard and dock kept above the cameras in portrait, camera-side strip reserved in landscape, app drawer kept at full size) |
 | `kernel-modules-root/` | the `Android.bp`/`Android.mk` stubs for `sm8635-modules/` |
 | `INSTALL-RELEASE.md` | installing a downloaded build (start here as a user) |
 | `INSTALL.md` | installing your own build, and returning to stock |

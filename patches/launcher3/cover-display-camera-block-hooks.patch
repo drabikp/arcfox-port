@@ -1,10 +1,10 @@
-From 42ed06305a6755bba7cc3064e885faa1f8de21a2 Mon Sep 17 00:00:00 2001
+From d7daae7c780e4da3b46e75c38773c75ed81cc85c Mon Sep 17 00:00:00 2001
 From: Peter Drabik <drabikp@posam.sk>
 Date: Mon, 14 Sep 2026 10:54:23 +0200
 Subject: [PATCH] Device hooks for panels with a physically covered bottom
  corner
 
-Three resource-gated hooks, all default off, for a device whose display has
+Four resource-gated hooks, all default off, for a device whose display has
 a camera block inside the panel at the bottom (a flip phone's cover display):
 
 - hotseat_bar_bottom_space_extra: extra bottom space under the hotseat so
@@ -20,17 +20,23 @@ a camera block inside the panel at the bottom (a flip phone's cover display):
   size when the workspace is scaled down to fit a short panel. All-apps
   scrolls and never has to fit; on a 565dp panel sharing a 4x5 grid the
   upstream behaviour gave 37dp icons with 7dp labels.
+- taskbar_covered_side_inset_landscape: a second navigationBars inset
+  provider (index 1, display-sourced) that reserves the covered strip on
+  the side it lands on in landscape (rotation 90: right, 270: left), the
+  way a side navigation bar does on phones: app bounds, window frames and
+  the IME lay out around it. Empty in portrait and on other panels.
 
 Change-Id: I10c4b06c2848bd43a2e912682909c151084602d8
 ---
- .../taskbar/TaskbarInsetsController.kt        | 25 +++++++++++++++++++
- res/values/dimens.xml                         | 11 ++++++++
- src/com/android/launcher3/DeviceProfile.java  |  3 +++
- .../launcher3/deviceprofile/AllAppsProfile.kt | 14 ++++++++---
- 4 files changed, 50 insertions(+), 3 deletions(-)
+ .../taskbar/TaskbarInsetsController.kt        | 44 +++++++++++++++++++
+ .../launcher3/taskbar/TaskbarSharedState.java |  4 +-
+ res/values/dimens.xml                         | 14 ++++++
+ src/com/android/launcher3/DeviceProfile.java  |  3 ++
+ .../launcher3/deviceprofile/AllAppsProfile.kt | 14 ++++--
+ 5 files changed, 75 insertions(+), 4 deletions(-)
 
 diff --git a/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt b/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
-index 0c8326072f..ec12a8ca08 100644
+index 0c8326072f..e8c4e356a8 100644
 --- a/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
 +++ b/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
 @@ -42,12 +42,14 @@ import android.view.WindowInsets.Type.navigationBars
@@ -48,8 +54,43 @@ index 0c8326072f..ec12a8ca08 100644
  import com.android.launcher3.anim.AlphaUpdateListener
  import com.android.launcher3.taskbar.TaskbarControllers.LoggableTaskbarController
  import com.android.launcher3.taskbar.TaskbarInsetsController.DebugTouchableRegion.Companion.DEFAULT_TOUCH_REGION
-@@ -238,6 +240,29 @@ class TaskbarInsetsController(val context: TaskbarActivityContext) : LoggableTas
+@@ -69,6 +71,8 @@ class TaskbarInsetsController(val context: TaskbarActivityContext) : LoggableTas
+     companion object {
+         private const val INDEX_LEFT = 0
+         private const val INDEX_RIGHT = 1
++        /** Second navigationBars provider: a physically covered side strip in landscape. */
++        const val INDEX_COVERED_SIDE = 1
+         private const val TAG = "TaskbarInsetsController"
+ 
+         private fun Region.addBoundsToRegion(bounds: Rect?) {
+@@ -229,6 +233,8 @@ class TaskbarInsetsController(val context: TaskbarActivityContext) : LoggableTas
+                 .setSource(SOURCE_DISPLAY),
+             InsetsFrameProvider(insetsOwner, INDEX_RIGHT, systemGestures())
+                 .setSource(SOURCE_DISPLAY),
++            InsetsFrameProvider(insetsOwner, INDEX_COVERED_SIDE, navigationBars())
++                .setSource(SOURCE_DISPLAY),
+         )
+     }
+ 
+@@ -236,8 +242,46 @@ class TaskbarInsetsController(val context: TaskbarActivityContext) : LoggableTas
+         val contentHeight = controllers.taskbarStashController.contentHeightToReportToApps
+         val tappableHeight = controllers.taskbarStashController.tappableHeightToReportToApps
          val res = context.resources
++        if (provider.type == navigationBars() && provider.index == INDEX_COVERED_SIDE) {
++            // Device hook: on a panel whose bottom corner is physically covered (cover display
++            // camera block), reserve that side in landscape as a navigation-bar inset, the way a
++            // side navigation bar does on phones: app bounds, window frames and the IME all lay
++            // out around it. Empty everywhere else (portrait keeps the whole panel). Rotation 90
++            // puts the panel's bottom edge on the right, rotation 270 on the left.
++            val side = res.getDimensionPixelSize(R.dimen.taskbar_covered_side_inset_landscape)
++            provider.insetsSize =
++                when {
++                    side > 0 && endRotation == Surface.ROTATION_90 -> Insets.of(0, 0, side, 0)
++                    side > 0 && endRotation == Surface.ROTATION_270 -> Insets.of(side, 0, 0, 0)
++                    else -> Insets.NONE
++                }
++            return
++        }
          if (provider.type == navigationBars()) {
              provider.insetsSize = getInsetsForGravityWithCutout(contentHeight, gravity, endRotation)
 +            // Device hook: report a larger bottom inset to the IME window only, so the keyboard
@@ -78,11 +119,26 @@ index 0c8326072f..ec12a8ca08 100644
          } else if (provider.type == mandatorySystemGestures()) {
              if (context.isThreeButtonNav) {
                  provider.insetsSize =
+diff --git a/quickstep/src/com/android/launcher3/taskbar/TaskbarSharedState.java b/quickstep/src/com/android/launcher3/taskbar/TaskbarSharedState.java
+index be9485a4e6..52806c0263 100644
+--- a/quickstep/src/com/android/launcher3/taskbar/TaskbarSharedState.java
++++ b/quickstep/src/com/android/launcher3/taskbar/TaskbarSharedState.java
+@@ -125,7 +125,9 @@ public class TaskbarSharedState {
+             new InsetsFrameProvider(mInsetsOwner, INDEX_LEFT, systemGestures())
+                     .setSource(SOURCE_DISPLAY),
+             new InsetsFrameProvider(mInsetsOwner, INDEX_RIGHT, systemGestures())
+-                    .setSource(SOURCE_DISPLAY)
++                    .setSource(SOURCE_DISPLAY),
++            new InsetsFrameProvider(mInsetsOwner, TaskbarInsetsController.INDEX_COVERED_SIDE,
++                    navigationBars()).setSource(SOURCE_DISPLAY)
+     };
+ 
+     // Allows us to shift translation logic when doing taskbar pinning animation.
 diff --git a/res/values/dimens.xml b/res/values/dimens.xml
-index 4aaf95efb3..9fcf34c669 100644
+index 4aaf95efb3..eb0c128ccd 100644
 --- a/res/values/dimens.xml
 +++ b/res/values/dimens.xml
-@@ -454,6 +454,17 @@
+@@ -454,6 +454,20 @@
  
      <!-- Taskbar related (placeholders to compile in Launcher3 without Quickstep) -->
      <dimen name="taskbar_size">0dp</dimen>
@@ -97,6 +153,9 @@ index 4aaf95efb3..9fcf34c669 100644
 +    <!-- Keep the all-apps grid at its configured size on panels where the workspace
 +         has to be scaled down to fit (see AllAppsProfile). -->
 +    <bool name="all_apps_ignore_workspace_scale">false</bool>
++    <!-- Width of a physically covered strip at the panel's bottom edge, reserved as a
++         navigation-bar inset on that side in landscape only (see TaskbarInsetsController). -->
++    <dimen name="taskbar_covered_side_inset_landscape">0dp</dimen>
      <dimen name="taskbar_phone_size">@*android:dimen/navigation_bar_frame_height</dimen>
      <dimen name="taskbar_phone_home_button_size">80dp</dimen>
      <dimen name="taskbar_phone_content_padding">8dp</dimen>

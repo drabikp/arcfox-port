@@ -251,20 +251,33 @@ Stock lays apps out around them with private Motorola framework code that AOSP
 does not have. On AOSP the only tool is a "display cutout", and declaring the
 camera block as one makes Android reserve the entire bottom 27% of the panel
 for every app: nothing scrolls from there and it looks like a huge bezel. So
-this build does **not** declare it. Apps use the whole panel, and two things
-that would otherwise land behind the cameras are moved: the keyboard's bottom
-row stays above the block in portrait, and the launcher's dock sits above it
-(which makes the cover home screen a bit cramped; the app drawer keeps its
-normal icon size). What is left is expected:
+this build does **not** declare it. Instead it does what stock's own
+"full screen" mode does, read from Motorola's firmware:
 
-- apps with a button in the bottom-right corner have it behind the cameras on
-  the cover; rotate the phone or use the inner display for those
-- the keyboard's language-switch button lands behind the cameras
-- in landscape the keyboard is not lifted; in one of the two landscape
-  orientations the block covers the bottom-left corner
+- **Portrait:** apps use the whole panel. The keyboard's bottom row and the
+  launcher's dock are kept above the camera block (stock's rule, 297 px from
+  the bottom edge); the app drawer keeps its normal icon size.
+- **Landscape:** a 297 px strip on the camera side is reserved, the way a
+  side navigation bar is, so apps and the keyboard lay out next to it and
+  vertical scrolling works everywhere.
 
-This is the same trade-off every AOSP-based ROM faces on this hardware; if a
-better general solution appears upstream it will replace these tweaks.
+What is left is expected:
+
+- in portrait, apps with a button in the bottom-right corner have it behind
+  the cameras on the cover; rotate the phone or use the inner display for those
+- the keyboard's language-switch button lands behind the cameras in portrait
+
+Stock additionally lets you pick per app whether it stops above the cameras in
+portrait; this build has no such per-app switch. If a general solution appears
+upstream it will replace these tweaks.
+
+## Folding with an app open
+
+*Settings → Display → Continue using apps on fold* offers the same three
+choices as stock: **Always** keeps the app running on the cover, **Swipe up to
+continue** (the default) shows the lock screen on the cover, **Never** turns
+the cover off and locks. Builds before 20260914 behaved like *Always* with no
+way to change it.
 
 ## Confirming it worked
 

@@ -1,5 +1,36 @@
+From cf9551560461f092bd47d19ca1ad9787aea738ff Mon Sep 17 00:00:00 2001
+From: Peter Drabik <drabikp@posam.sk>
+Date: Mon, 14 Sep 2026 10:54:23 +0200
+Subject: [PATCH] Device hooks for panels with a physically covered bottom
+ corner
+
+Two dimensions, both 0dp by default, for a cover display whose bottom corner is
+occluded by a rear camera block (Motorola razr 50 ultra: 495x349 px at the
+bottom right of a 1080x1272 panel):
+
+- hotseat_bar_bottom_space_extra: added to hotseatBarBottomSpacePx so the dock
+  can sit above the covered area.
+- taskbar_ime_bottom_inset_override: the taskbar's navigationBars provider gets
+  an InsetsSizeOverride for TYPE_INPUT_METHOD (portrait only), so the keyboard
+  positions itself above the covered area while apps and the launcher keep the
+  real bar height. Same mechanism the taskbar already uses for the assistant
+  window.
+
+Declaring the block as a display cutout is not an option on AOSP: a bottom-edge
+cutout becomes a full-width safe inset and every edge-to-edge app ends its
+scroll views above it, so 27% of the panel cannot start a scroll.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014XqRMfq23vyPvEKawNza11
+Change-Id: I10c4b06c2848bd43a2e912682909c151084602d8
+---
+ .../taskbar/TaskbarInsetsController.kt        | 25 +++++++++++++++++++
+ res/values/dimens.xml                         |  8 ++++++
+ src/com/android/launcher3/DeviceProfile.java  |  3 +++
+ 3 files changed, 36 insertions(+)
+
 diff --git a/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt b/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
-index 0c8326072f..21ccf854ae 100644
+index 0c8326072f..ec12a8ca08 100644
 --- a/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
 +++ b/quickstep/src/com/android/launcher3/taskbar/TaskbarInsetsController.kt
 @@ -42,12 +42,14 @@ import android.view.WindowInsets.Type.navigationBars
@@ -17,37 +48,41 @@ index 0c8326072f..21ccf854ae 100644
  import com.android.launcher3.anim.AlphaUpdateListener
  import com.android.launcher3.taskbar.TaskbarControllers.LoggableTaskbarController
  import com.android.launcher3.taskbar.TaskbarInsetsController.DebugTouchableRegion.Companion.DEFAULT_TOUCH_REGION
-@@ -238,6 +240,25 @@ class TaskbarInsetsController(val context: TaskbarActivityContext) : LoggableTas
+@@ -238,6 +240,29 @@ class TaskbarInsetsController(val context: TaskbarActivityContext) : LoggableTas
          val res = context.resources
          if (provider.type == navigationBars()) {
              provider.insetsSize = getInsetsForGravityWithCutout(contentHeight, gravity, endRotation)
 +            // Device hook: report a larger bottom inset to the IME window only, so the keyboard
 +            // stays clear of a physically covered bottom corner (cover display camera block).
-+            // Portrait (ROTATION_0) only: in landscape the covered corner is at the top or
-+            // the far left, not under the keyboard's main rows. Apps and the launcher keep
-+            // the real bar height in every rotation.
-+            val imeOverride = res.getDimensionPixelSize(R.dimen.taskbar_ime_bottom_inset_override)
-+            if (
-+                imeOverride > 0 &&
-+                    endRotation == Surface.ROTATION_0 &&
-+                    (gravity and Gravity.BOTTOM) == Gravity.BOTTOM
-+            ) {
++            // Gated by a boolean that must NOT vary per panel: WindowManager rejects a relayout
++            // that changes the SET of override types after the window is added, and this
++            // window survives display switches (fold/unfold). When enabled the entry is always
++            // present and only its size varies; the lift applies in portrait with the bar at
++            // the bottom, otherwise the entry repeats the normal navigationBars size.
++            if (res.getBoolean(R.bool.taskbar_ime_bottom_inset_override_enabled)) {
++                val imeOverride =
++                    res.getDimensionPixelSize(R.dimen.taskbar_ime_bottom_inset_override)
++                val imeInsets =
++                    if (
++                        imeOverride > 0 &&
++                            endRotation == Surface.ROTATION_0 &&
++                            (gravity and Gravity.BOTTOM) == Gravity.BOTTOM
++                    ) {
++                        Insets.of(0, 0, 0, maxOf(contentHeight, imeOverride))
++                    } else {
++                        provider.insetsSize
++                    }
 +                provider.insetsSizeOverrides =
-+                    arrayOf(
-+                        InsetsFrameProvider.InsetsSizeOverride(
-+                            TYPE_INPUT_METHOD,
-+                            Insets.of(0, 0, 0, maxOf(contentHeight, imeOverride)),
-+                        )
-+                    )
++                    arrayOf(InsetsFrameProvider.InsetsSizeOverride(TYPE_INPUT_METHOD, imeInsets))
 +            }
          } else if (provider.type == mandatorySystemGestures()) {
              if (context.isThreeButtonNav) {
                  provider.insetsSize =
 diff --git a/res/values/dimens.xml b/res/values/dimens.xml
-index 4aaf95efb3..c857916056 100644
+index 4aaf95efb3..b33b4c4cec 100644
 --- a/res/values/dimens.xml
 +++ b/res/values/dimens.xml
-@@ -454,6 +454,12 @@
+@@ -454,6 +454,14 @@
  
      <!-- Taskbar related (placeholders to compile in Launcher3 without Quickstep) -->
      <dimen name="taskbar_size">0dp</dimen>
@@ -57,6 +92,8 @@ index 4aaf95efb3..c857916056 100644
 +         the covered area while apps keep the real bar height. Both default to 0dp. -->
 +    <dimen name="hotseat_bar_bottom_space_extra">0dp</dimen>
 +    <dimen name="taskbar_ime_bottom_inset_override">0dp</dimen>
++    <!-- Must be the same on every panel of a device (see TaskbarInsetsController). -->
++    <bool name="taskbar_ime_bottom_inset_override_enabled">false</bool>
      <dimen name="taskbar_phone_size">@*android:dimen/navigation_bar_frame_height</dimen>
      <dimen name="taskbar_phone_home_button_size">80dp</dimen>
      <dimen name="taskbar_phone_content_padding">8dp</dimen>
@@ -74,3 +111,6 @@ index ce25f40ce6..281af28680 100644
  
          if (mIsResponsiveGrid) {
              updateHotseatSizes(mResponsiveWorkspaceCellSpec.getIconSize());
+-- 
+2.54.0
+

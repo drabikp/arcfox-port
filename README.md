@@ -22,7 +22,7 @@ Verified on a flashed build, cold-booted:
 | | |
 |---|---|
 | Telephony | VoLTE (calls stay on IMS, no SRVCC), VoWiFi, mobile data, SMS, emergency calling |
-| Display | both panels (inner 1080x2640 + cover), per-display cutouts, posture-driven routing |
+| Display | both panels (inner 1080x2640 + cover), posture-driven routing, wake on open |
 | Input | both touchscreens, double-tap-to-wake on each |
 | Camera | 3 cameras, API1 and API2, video recording |
 | Sensors | 79 sensors, all fold postures commit |

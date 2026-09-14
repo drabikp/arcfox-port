@@ -5,10 +5,12 @@ build for the Motorola razr 50 ultra / razr+ 2024 (`arcfox`). It was run end to
 end on this device on 2026-09-10 with the package named below, starting from a
 freshly flashed and booted stock W1UXS36H.72-45-10-7 and following
 [INSTALL-RELEASE.md](INSTALL-RELEASE.md) and then Procedure A of this document
-exactly as written. (That test build was never published; the 20260913 release
-differs from it only by the removal of a leftover bring-up diagnostic.)
+exactly as written. (That test build was never published; the 20260914 release
+adds the removal of a leftover bring-up diagnostic, official USB-debugging
+semantics and the cover-display layout changes, none of which touch this
+procedure.)
 
-**Requires build `lineage-23.2-20260913-UNOFFICIAL-arcfox` or later.** Earlier
+**Requires build `lineage-23.2-20260914-UNOFFICIAL-arcfox` or later.** Earlier
 builds cannot take GApps at all — see [If you are on the 20260902 build](#if-you-are-on-the-20260902-build).
 
 ---
@@ -23,7 +25,7 @@ LineageOS 23 (Android 16), and it is the only one that has been tested here:
 | Package | **MindTheGapps 16.0.0 arm64** |
 | Download | <https://github.com/MindTheGapps/16.0.0-arm64/releases/latest> |
 | Tested build | `MindTheGapps-16.0.0-arm64-20260828_065733.zip` |
-| Needs | about 1.1 GB free in `product` — the 20260913 build reserves 1.9 GB |
+| Needs | about 1.1 GB free in `product` — the 20260914 build reserves 1.9 GB |
 
 Download the `.zip` and its `.sha256sum`, then check it:
 
@@ -85,7 +87,7 @@ fastboot flash recovery recovery.img
 fastboot reboot recovery
 ```
 
-If LineageOS 20260913 or later is already installed, `adb reboot recovery`
+If LineageOS 20260914 or later is already installed, `adb reboot recovery`
 from the running system works too.
 
 ### 2. Sideload the ROM
@@ -144,7 +146,7 @@ Services and the Google app are present.
 
 ## Procedure B — adding GApps to an installed ROM
 
-Use this when LineageOS 20260913 or later is already installed and has been
+Use this when LineageOS 20260914 or later is already installed and has been
 booted. Your data will be wiped; back it up first.
 
 1. From the running system: `adb reboot recovery`
@@ -186,7 +188,7 @@ fastboot reboot recovery               # starts the recovery you flashed at inst
 ```
 
 From that recovery follow [Procedure A](#procedure-a--fresh-install-from-stock-or-wiping-anyway)
-from step 2 with the **20260913 or later** ROM zip. It lands on the slot you
+from step 2 with the **20260914 or later** ROM zip. It lands on the slot you
 came from, replaces its boot chain and recovery, and the "reboot to recovery"
 prompt then works. Your data survives the ROM update; the wipe in step 5 is
 still required for GApps.
@@ -225,7 +227,7 @@ booting. No wipe is needed for an update: your data and accounts stay.
 | `adb devices` says `unauthorized` in recovery | ADB is off. *Advanced → Enable ADB* on the phone. It resets after every sideload. |
 | `adb: error: closed` in the system after a wipe | The computer's key was wiped too. Accept the USB-debugging prompt on the phone. |
 | *Signature verification failed* | Normal for MindTheGapps. Choose yes. |
-| *Not enough space for GApps! Aborting* | You are on a build older than 20260913. Its images ship 100% full. Update the ROM first. |
+| *Not enough space for GApps! Aborting* | You are on a build older than 20260914. Its images ship 100% full. Update the ROM first. |
 | Phone restarts endlessly after "reboot to recovery", nothing on USB | You are on the 20260902 build. See [above](#if-you-are-on-the-20260902-build). |
 | *Error in /sideload/package.zip (status 1)* with no other text | The installer aborted before printing. Almost always the space case above. |
 | Play Services keeps stopping after boot | GApps were added after a boot without them. Wipe `/data` (Procedure B step 3) and boot again. |

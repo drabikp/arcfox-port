@@ -1,141 +1,37 @@
-Subject: [PATCH] DeskClock: size the digital widget from its real bounds, and
- stop the framework from dropping the update
+From 5b1cc3069785d67d5d86b5215095fe4c4146513a Mon Sep 17 00:00:00 2001
+From: drabikp <drabik.p@gmail.com>
+Date: Tue, 1 Sep 2026 11:06:54 +0200
+Subject: [PATCH 1/3] DigitalAppWidget: size the clock from the host's real
+ bounds
 
-Apply in:  <ANDROID_TREE>/packages/apps/DeskClock
-Command:   git apply -p1 digital-widget-multidisplay-sizing.patch
+On a multi-display device the digital clock widget renders at the wrong size,
+badly enough to be unreadable or clipped. It is an AOSP bug, not a device one,
+and it hits any foldable or any phone with a cover panel.
 
-PROBLEM
--------
-On arcfox (Motorola flip, two internal displays) the DeskClock "Digital clock"
-widget on the cover-display home screen has failed in two opposite directions.
+relayoutWidget() sized the clock from OPTION_APPWIDGET_MIN_WIDTH/HEIGHT and
+OPTION_APPWIDGET_MAX_WIDTH/HEIGHT. Those four are an AGGREGATE: when a widget
+can appear on more than one display profile, the launcher reports the minimum
+of the minima and the maximum of the maxima across ALL profiles. On a device
+whose two panels differ substantially the resulting box matches neither, so
+the clock is laid out for a display it is not on.
 
-(1) With the stock provider the clock was sized for a box far larger than the
-    widget and the digits were clipped to slivers.
+Use OPTION_APPWIDGET_SIZES instead. That is the per-profile list the host
+actually publishes, and RemoteViews can carry one sized view per entry, so the
+host picks the one matching its real bounds at draw time. Capped at 16 entries
+to match RemoteViews.MAX_INIT_VIEW_COUNT, which throws above that.
 
-(2) After the widget was widened to two grid rows the clock collapsed to a
-    single pixel.  Measured on device (dumpsys activity com.android.launcher3):
+Two smaller fixes come with it. A last-resort 40dp fallback is used when the
+host supplies no size at all AND the provider info cannot be read -- without it
+the widget is laid out for a 0x0 box and the font collapses to 1px. And
+widgetFeatures="configuration_optional" is set, so the widget can be placed
+from a default_workspace without the configuration activity blocking it.
 
-      LauncherAppWidgetHostView  14,137-1030,355  = 1016 x 218 px
-        TextClock @id/clock      506,108-510,109  =    4 x   1 px
-          TextClock @id/date     0,0-5,1          =    5 x   1 px
-
-    A TextView with includeFontPadding="false" is about 1.16 x textSize tall,
-    so a 1 px tall clock means the applied RemoteViews was built with
-    mClockFontSizePx == 1 -- the floor optimizeSizes() returns when even a 1 px
-    font "overflows" the target box.
-
-ROOT CAUSE
-----------
-Two independent defects, both required to produce (2).
-
-A. Sizing against an empty options bundle.
-
-   Launcher3 lays out its default workspace through DefaultLayoutParser, which
-   binds the widget with the two-argument
-   AppWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, componentName) -- no
-   options bundle.  AppWidgetServiceImpl then immediately sends
-   ACTION_APPWIDGET_UPDATE while widget.options is still an empty Bundle.
-   relayoutWidget() finds no OPTION_APPWIDGET_SIZES, Bundle.getInt() returns 0
-   for every MIN_*/MAX_* key, and the clock is laid out for a 0 x 0 box.  Even
-   at a 1 px font the sizer still measures at least the layout's own padding
-   (widget_padding 16 dp = 36 px per side, so >= 72 px in each dimension), so
-   Sizes.hasViolations() is true against 0 x 0 and optimizeSizes() returns its
-   1 px floor.  That RemoteViews is what the widget still displays.
-
-   The stock code has exactly the same hole: it reads the same bundle with the
-   same Bundle.getInt() and would also size the clock for a 0 x 0 box.
-
-B. Every later, correctly sized update was silently dropped.
-
-   AppWidgetManager.tryAdapterConversion() (frameworks/base) routes any update
-   whose RemoteViews contains a legacy collection adapter through
-   shouldSkipListConversion():
-
-       return appWidgetIds.length == 1
-               && views.hasLegacyLists()
-               && mService.isFirstConfigActivityPending(mPackageName, ids[0]);
-
-   and when that is true it strips the intents and *returns without ever
-   invoking the update action* -- updateAppWidgetIds() is never called.  It
-   logs only "Skipping legacy list conversion, pending config activity".
-
-   digital_appwidget.xml declares android:configure=... without
-   android:widgetFeatures="configuration_optional", so
-   Widget.isFirstConfigActivityPending is set true at bind time
-   (AppWidgetServiceImpl line ~1720) and is never cleared, because a widget
-   placed from the default workspace never runs its configuration activity.
-
-   hasLegacyLists() becomes true as soon as any of the per-size RemoteViews
-   calls setRemoteAdapter() for @id/world_city_list, which relayoutWidget()
-   does when getListHeight() exceeds widget_min_world_city_list_size (80 dp =
-   180 px at this density).  At one grid row the tallest advertised size was
-   1016 x 417 px, which after the 332 px the widget measures at the maximum
-   font leaves 85 px -- below 180 px, so no entry enabled the list, no update
-   was ever routed through tryAdapterConversion(), and the widget looked
-   correct.  At two grid rows the *inner display's* portrait profile
-   contributes 1016 x 862 px and 1016 x 852 px entries; 862 - 332 = 530 px is
-   well above 180 px, the list is enabled, hasLegacyLists() flips to true, and
-   from that moment on every single update for this widget is discarded.
-
-   Measured, 10:07:05 on device, one relayoutWidget() call:
-
-     V/DigitalWidgetProvider: Target dimensions: 1016px x 218px / font 101px
-     V/DigitalWidgetProvider: Target dimensions: 1016px x 862px / font 180px
-     V/DigitalWidgetProvider: Target dimensions: 1016px x 852px / font 180px
-     V/DigitalWidgetProvider: Target dimensions:  604px x 342px / font 180px
-     V/DigitalWidgetProvider: Target dimensions: 1016px x 208px / font  95px
-     V/DigitalWidgetProvider: Target dimensions: 2212px x 342px / font 180px
-     D/AppWidgetManager: Skipping legacy list conversion, pending config activity
-     D/AppWidgetManager: Skipping collection notify, pending config activity
-
-   The provider computed a correct 101 px font for the real 1016 x 218 px
-   bounds; the framework threw the update away, and the view stayed 4 x 1 px.
-
-FIX
+Assisted-by: Claude-Code:claude-opus-5
+Change-Id: I020282f08c646403eaaedc5dad401ca1b9f6b03a
 ---
-1. res/xml/digital_appwidget.xml: add
-   android:widgetFeatures="configuration_optional".
-   DigitalAppWidgetConfigurationActivity only chooses a transparent or solid
-   background and the widget renders correctly with the default, so
-   configuration genuinely is optional.  This clears
-   isFirstConfigActivityPending at bind time, so shouldSkipListConversion()
-   is false and updates carrying the world-city adapter are delivered.
-
-2. DigitalAppWidgetProvider: never size the clock from anything but bounds the
-   host actually reported.
-
-   - OPTION_APPWIDGET_MAX_WIDTH / MAX_HEIGHT are no longer read anywhere.  On a
-     device with more than one internal display Launcher3's WidgetSizeHandler
-     aggregates them over InvariantDeviceProfile.supportedProfiles, so
-     MAX_HEIGHT can describe a display the widget is not being drawn on.  That
-     was failure (1).
-   - The per-size map from OPTION_APPWIDGET_SIZES is kept: it is the API that
-     lets AppWidgetHostView.onLayout() pick the layout matching its real bounds.
-   - A synthetic entry is always added first, holding the component-wise
-     minimum of OPTION_APPWIDGET_MIN_WIDTH/MIN_HEIGHT and every advertised
-     size.  By construction it has the smallest area in the map, so
-     RemoteViews.findSmallestRemoteView() -- the layout the host applies before
-     it has ever laid the widget out, when mCurrentSize is still null -- is now
-     one that fits inside every size the host may choose instead of whichever
-     profile happened to have the smallest area.
-   - When the options bundle carries no size at all, that synthetic entry falls
-     back to AppWidgetProviderInfo.minWidth/minHeight (the appwidget-provider
-     XML declaration, 202 dp x 80 dp) and then to a 40 dp floor, so the target
-     box can never be 0 x 0.  That was failure (2)A.
-
-On arcfox the host now selects the 1016 x 218 px entry, whose measured clock
-font is 101 px.
-
-This is an upstream AOSP/LineageOS bug, not an arcfox port defect: it fires on
-any device whose launcher reports more than one device profile with materially
-different cell heights (foldables, flip phones, tablets with a cover screen).
-
-NOTE (not fixed here): shouldSkipListConversion() dropping the update instead
-of posting the stripped RemoteViews looks like an AOSP bug in
-frameworks/base/core/java/android/appwidget/AppWidgetManager.java --
-the "skip" branch calls viewsCopy.replaceAllIntentsWithEmptyList() and then
-falls out of the if without calling the action.  Making configuration optional
-side-steps it; it is worth reporting upstream.
+ res/xml/digital_appwidget.xml                 |   3 +-
+ .../alarmclock/DigitalAppWidgetProvider.java  | 132 +++++++++++++++---
+ 2 files changed, 114 insertions(+), 21 deletions(-)
 
 diff --git a/res/xml/digital_appwidget.xml b/res/xml/digital_appwidget.xml
 index cb876da80..4bbe66a57 100644
@@ -353,3 +249,104 @@ index 39d7075ae..7f21c7472 100644
          final int largestClockFontSizePx =
                  resources.getDimensionPixelSize(R.dimen.widget_max_clock_font_size);
  
+-- 
+2.54.0
+
+
+From 37b231fc6bff7f56eea4d612e32e488c89049f1f Mon Sep 17 00:00:00 2001
+From: drabikp <drabik.p@gmail.com>
+Date: Tue, 1 Sep 2026 11:06:54 +0200
+Subject: [PATCH 2/3] DigitalAppWidget: widen the date line's share of the
+ widget
+
+The date font is derived from the clock font by a fixed divisor. AOSP uses
+5.5; on arcfox's 1080x1272 cover panel that lands the date at a size that
+clips against the clock above it. 4 gives the date the room it needs on that
+panel.
+
+This is a device-shaped constant, unlike the sizing fix it sits on top of, and
+is kept as a separate change so the upstreamable half can be sent on its own.
+
+Assisted-by: Claude-Code:claude-opus-5
+Change-Id: I9f17290f4b87d9168f8ef14d4ab69d41af0f3694
+---
+ src/com/android/alarmclock/DigitalAppWidgetProvider.java | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/alarmclock/DigitalAppWidgetProvider.java b/src/com/android/alarmclock/DigitalAppWidgetProvider.java
+index 7f21c7472..e16ce8c22 100644
+--- a/src/com/android/alarmclock/DigitalAppWidgetProvider.java
++++ b/src/com/android/alarmclock/DigitalAppWidgetProvider.java
+@@ -633,7 +633,11 @@ public class DigitalAppWidgetProvider extends AppWidgetProvider {
+         private int getClockFontSizePx() { return mClockFontSizePx; }
+         private void setClockFontSizePx(int clockFontSizePx) {
+             mClockFontSizePx = clockFontSizePx;
+-            mFontSizePx = max(1, round(clockFontSizePx / 5.5f));
++            // arcfox: AOSP uses /5.5f. On the 1080x1272 cover panel the clock font lands
++            // at ~101px, so the date rendered at ~18px (~8dp) and was unreadable.
++            // /4f gives ~25px (~11dp) there and ~45px on the inner panel. The
++            // optimizer fits clock+date together, so the clock shrinks slightly.
++            mFontSizePx = max(1, round(clockFontSizePx / 4f));
+             mIconFontSizePx = (int) (mFontSizePx * 1.4f);
+             mIconPaddingPx = mFontSizePx / 3;
+         }
+-- 
+2.54.0
+
+
+From 816a982f2812c59433991381fc1623f76bd1858d Mon Sep 17 00:00:00 2001
+From: drabikp <drabik.p@gmail.com>
+Date: Mon, 14 Sep 2026 16:38:35 +0200
+Subject: [PATCH 3/3] DigitalAppWidget: send text sizes in dp so the host's
+ density applies
+
+The provider measures at its own current density and sent pixel sizes; a
+host on a display with a different density (a foldable's other panel)
+rendered the clock ~17% too large or small depending on which panel was the
+default display when the update ran. Hand the sizes over in dp.
+
+Change-Id: I4f2c0b6d8e1a4c7f9b3d2e5a6c8b7d9e0f1a2b3c
+---
+ .../alarmclock/DigitalAppWidgetProvider.java      | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/src/com/android/alarmclock/DigitalAppWidgetProvider.java b/src/com/android/alarmclock/DigitalAppWidgetProvider.java
+index e16ce8c22..4372389a2 100644
+--- a/src/com/android/alarmclock/DigitalAppWidgetProvider.java
++++ b/src/com/android/alarmclock/DigitalAppWidgetProvider.java
+@@ -27,6 +27,7 @@ import static android.content.Intent.ACTION_CONFIGURATION_CHANGED;
+ import static android.content.Intent.ACTION_LOCALE_CHANGED;
+ import static android.content.Intent.ACTION_TIMEZONE_CHANGED;
+ import static android.content.Intent.ACTION_TIME_CHANGED;
++import static android.util.TypedValue.COMPLEX_UNIT_DIP;
+ import static android.util.TypedValue.COMPLEX_UNIT_PX;
+ import static android.view.View.GONE;
+ import static android.view.View.MeasureSpec.UNSPECIFIED;
+@@ -372,15 +373,19 @@ public class DigitalAppWidgetProvider extends AppWidgetProvider {
+             LOGGER.v(sizes.toString());
+         }
+ 
+-        // Apply the computed sizes to the remote views.
++        // Apply the computed sizes to the remote views. The sizes were measured in pixels at
++        // this process's current density, but the host may render them on a display with a
++        // different density (a foldable's other panel), so hand them over in dp and let the
++        // host convert; otherwise the same widget renders ~17% larger or smaller depending on
++        // which panel was the default display when the update ran.
+         rv.setInt(R.id.nextAlarmIcon, "setMaxHeight", sizes.mFontSizePx);
+         rv.setViewPadding(R.id.nextAlarmIcon, sizes.mIconPaddingPx, 0, sizes.mIconPaddingPx, 0);
+-        rv.setTextViewTextSize(R.id.date, COMPLEX_UNIT_PX, sizes.mFontSizePx);
+-        rv.setTextViewTextSize(R.id.nextAlarm, COMPLEX_UNIT_PX, sizes.mFontSizePx);
+-        rv.setTextViewTextSize(R.id.clock, COMPLEX_UNIT_PX, sizes.mClockFontSizePx);
++        rv.setTextViewTextSize(R.id.date, COMPLEX_UNIT_DIP, sizes.mFontSizePx / density);
++        rv.setTextViewTextSize(R.id.nextAlarm, COMPLEX_UNIT_DIP, sizes.mFontSizePx / density);
++        rv.setTextViewTextSize(R.id.clock, COMPLEX_UNIT_DIP, sizes.mClockFontSizePx / density);
+         // Shift the bottom view up by half of the non-removable TextView padding
+         rv.setViewLayoutMargin(R.id.bottom_view, RemoteViews.MARGIN_TOP,
+-                sizes.mBottomViewMarginTopPx, COMPLEX_UNIT_PX);
++                sizes.mBottomViewMarginTopPx / density, COMPLEX_UNIT_DIP);
+         rv.setViewPadding(R.id.bottom_view, 0, 0, 0, sizes.mBottomViewPaddingBottomPx);
+ 
+         final int smallestWorldCityListSizePx =
+-- 
+2.54.0
+

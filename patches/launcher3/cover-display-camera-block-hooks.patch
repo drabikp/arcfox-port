@@ -1,7 +1,7 @@
 From d7daae7c780e4da3b46e75c38773c75ed81cc85c Mon Sep 17 00:00:00 2001
 From: Peter Drabik <drabikp@posam.sk>
 Date: Mon, 14 Sep 2026 10:54:23 +0200
-Subject: [PATCH 1/2] Device hooks for panels with a physically covered bottom
+Subject: [PATCH] Device hooks for panels with a physically covered bottom
  corner
 
 Four resource-gated hooks, all default off, for a device whose display has
@@ -205,71 +205,6 @@ index b69e35d931..f4f885ae3f 100644
                          .toInt()
                          .toFloat(),
                  iconDrawablePaddingPx = allAppsIconDrawablePaddingPx,
--- 
-2.54.0
-
-
-From ed338c1fcfbb488306b9a720c11ada12e661b62e Mon Sep 17 00:00:00 2001
-From: Peter Drabik <drabikp@posam.sk>
-Date: Mon, 14 Sep 2026 17:47:37 +0200
-Subject: [PATCH 2/2] Widget size options: convert each profile with its own
- density
-
-WidgetSizeHandler divided every supported profile's pixel size by the
-current context's density. On a device whose panels differ in density
-(a flip phone: inner 420 dpi, cover 360 dpi) the other panel's entries
-in OPTION_APPWIDGET_SIZES were mislabelled by the density ratio, and
-after a fold or unfold the host picked a layout the provider had built
-for the wrong box (a clock widget visibly changing size). Use the
-metrics each DeviceProfile was built with.
-
-Change-Id: I7a1d9c2e4b6f8a0c3e5d7f9b1a3c5e7d9f1b3d5f
----
- src/com/android/launcher3/DeviceProfile.java             | 9 +++++++++
- .../android/launcher3/widget/util/WidgetSizeHandler.kt   | 7 ++++++-
- 2 files changed, 15 insertions(+), 1 deletion(-)
-
-diff --git a/src/com/android/launcher3/DeviceProfile.java b/src/com/android/launcher3/DeviceProfile.java
-index 281af28680..2499056462 100644
---- a/src/com/android/launcher3/DeviceProfile.java
-+++ b/src/com/android/launcher3/DeviceProfile.java
-@@ -780,6 +780,15 @@ public class DeviceProfile {
-         return mInfo;
-     }
- 
-+    /**
-+     * The display metrics this profile was built against, i.e. the density of the panel the
-+     * profile describes. On a device whose panels differ in density this is not the density of
-+     * the context that happens to be current. May be null for profiles built without metrics.
-+     */
-+    public DisplayMetrics getDisplayMetrics() {
-+        return mMetrics;
-+    }
-+
-     @VisibleForTesting
-     public int getHotseatColumnSpan() {
-         return mHotseatColumnSpan;
-diff --git a/src/com/android/launcher3/widget/util/WidgetSizeHandler.kt b/src/com/android/launcher3/widget/util/WidgetSizeHandler.kt
-index fdeecc5c65..0cad8a888a 100644
---- a/src/com/android/launcher3/widget/util/WidgetSizeHandler.kt
-+++ b/src/com/android/launcher3/widget/util/WidgetSizeHandler.kt
-@@ -70,10 +70,15 @@ constructor(
- 
-     /** Returns the bundle to be used as the default options for a widget with provided size. */
-     fun getWidgetSizeOptions(spanX: Int, spanY: Int): Bundle {
--        val density = context.resources.displayMetrics.density
-+        val contextDensity = context.resources.displayMetrics.density
-         val paddedSizes =
-             idp.supportedProfiles.mapTo(ArrayList()) {
-                 val widgetSizePx = WidgetSizes.getWidgetSizePx(it, spanX, spanY)
-+                // Convert with the density of the panel each profile describes. Using the
-+                // current context's density mislabels the other panel's sizes on a device
-+                // whose panels differ in density, and the host then picks a variant that was
-+                // laid out for the wrong box after a fold or unfold.
-+                val density = it.displayMetrics?.density ?: contextDensity
-                 SizeF(widgetSizePx.width / density, widgetSizePx.height / density)
-             }
- 
 -- 
 2.54.0
 

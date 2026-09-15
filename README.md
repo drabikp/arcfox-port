@@ -195,7 +195,7 @@ Output: `out/target/product/arcfox/lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
 - **Installing what you just built, or returning to stock?** →
   [INSTALL.md](INSTALL.md)
 - **Want the rules and the reasoning?** → [FLASHING.md](FLASHING.md)
-- **Google Apps?** → [GAPPS.md](GAPPS.md) — tested with MindTheGapps 16 on build 20260914
+- **Google Apps?** → [GAPPS.md](GAPPS.md) — tested with MindTheGapps 16 on build 20260915
 
 ⚠️ The install has only been tested onto stock **W1UXS36H.72-45-10-7**. The
 package writes 13 partitions and none of them are firmware — the modem,

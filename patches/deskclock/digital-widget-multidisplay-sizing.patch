@@ -1,7 +1,7 @@
 From 5b1cc3069785d67d5d86b5215095fe4c4146513a Mon Sep 17 00:00:00 2001
 From: drabikp <drabik.p@gmail.com>
 Date: Tue, 1 Sep 2026 11:06:54 +0200
-Subject: [PATCH 1/5] DigitalAppWidget: size the clock from the host's real
+Subject: [PATCH 1/6] DigitalAppWidget: size the clock from the host's real
  bounds
 
 On a multi-display device the digital clock widget renders at the wrong size,
@@ -256,7 +256,7 @@ index 39d7075ae..7f21c7472 100644
 From 37b231fc6bff7f56eea4d612e32e488c89049f1f Mon Sep 17 00:00:00 2001
 From: drabikp <drabik.p@gmail.com>
 Date: Tue, 1 Sep 2026 11:06:54 +0200
-Subject: [PATCH 2/5] DigitalAppWidget: widen the date line's share of the
+Subject: [PATCH 2/6] DigitalAppWidget: widen the date line's share of the
  widget
 
 The date font is derived from the clock font by a fixed divisor. AOSP uses
@@ -297,7 +297,7 @@ index 7f21c7472..e16ce8c22 100644
 From 816a982f2812c59433991381fc1623f76bd1858d Mon Sep 17 00:00:00 2001
 From: drabikp <drabik.p@gmail.com>
 Date: Mon, 14 Sep 2026 16:38:35 +0200
-Subject: [PATCH 3/5] DigitalAppWidget: send text sizes in dp so the host's
+Subject: [PATCH 3/6] DigitalAppWidget: send text sizes in dp so the host's
  density applies
 
 The provider measures at its own current density and sent pixel sizes; a
@@ -354,7 +354,7 @@ index e16ce8c22..4372389a2 100644
 From 5c58a366d91777b4bb3f3b8edd691e54945eb6ef Mon Sep 17 00:00:00 2001
 From: drabikp <drabik.p@gmail.com>
 Date: Tue, 15 Sep 2026 13:23:42 +0200
-Subject: [PATCH 4/5] DigitalAppWidget: send the date row's bottom spacing in
+Subject: [PATCH 4/6] DigitalAppWidget: send the date row's bottom spacing in
  dp as well
 
 setViewPadding only takes pixels, so the space below the date line was the
@@ -392,7 +392,7 @@ index 4372389a2..a51d00107 100644
 From 72eef520fb9020deff0d90ecdd0a48f1340ee6ca Mon Sep 17 00:00:00 2001
 From: drabikp <drabik.p@gmail.com>
 Date: Tue, 15 Sep 2026 17:05:13 +0200
-Subject: [PATCH 5/5] DigitalAppWidget: let the clock and date auto-size to the
+Subject: [PATCH 5/6] DigitalAppWidget: let the clock and date auto-size to the
  host's box
 
 On a foldable whose panels differ in density the host's advertised size
@@ -601,6 +601,49 @@ index a51d00107..e61905e7b 100644
          final int smallestWorldCityListSizePx =
                  resources.getDimensionPixelSize(R.dimen.widget_min_world_city_list_size);
          if (sizes.getListHeight() <= smallestWorldCityListSizePx) {
+-- 
+2.54.0
+
+
+From 975a961e18b3044acf445473f2afaa8b29d89635 Mon Sep 17 00:00:00 2001
+From: drabikp <drabik.p@gmail.com>
+Date: Tue, 15 Sep 2026 21:10:05 +0200
+Subject: [PATCH 6/6] DigitalAppWidget: keep the clock and date together when
+ the clock is capped
+
+With auto-sizing, a tall box (a foldable's inner panel at two rows) leaves
+the clock at its 80dp cap centred in a large row and the date centred in
+its own, with a gap between them. Align the clock to the bottom of its row
+and the date to the top of its row so the pair meets; boxes where nothing
+is capped render exactly as before.
+
+Change-Id: I8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f
+---
+ res/layout/digital_widget.xml | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/res/layout/digital_widget.xml b/res/layout/digital_widget.xml
+index 769fa05fe..418b03e99 100644
+--- a/res/layout/digital_widget.xml
++++ b/res/layout/digital_widget.xml
+@@ -41,7 +41,7 @@
+         android:layout_width="match_parent"
+         android:layout_height="0dp"
+         android:layout_weight="3"
+-        android:gravity="center"
++        android:gravity="center_horizontal|bottom"
+         android:autoSizeTextType="uniform"
+         android:autoSizeMinTextSize="8sp"
+         android:autoSizeMaxTextSize="@dimen/widget_max_clock_font_size"
+@@ -61,7 +61,7 @@
+         android:layout_width="match_parent"
+         android:layout_height="0dp"
+         android:layout_weight="1"
+-        android:gravity="center"
++        android:gravity="center_horizontal|top"
+         android:orientation="horizontal">
+ 
+         <TextClock
 -- 
 2.54.0
 

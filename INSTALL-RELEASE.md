@@ -237,11 +237,11 @@ is enabled until you do: Settings → About phone → tap **Build number** seven
 times → Developer options → USB debugging. The setting persists across reboots
 in both directions.
 
-Builds before 20260914 behaved differently: debugging was forced on at every
+Builds before 20260915 behaved differently: debugging was forced on at every
 boot, and on some boots the toggle came up **off** with the phone invisible to
 adb until you toggled it back on, a cable replug not helping. That was a race
 between the ROM's restore of the USB configuration and Motorola's init blanking
-it. 20260914 restores Motorola's own saved value instead, which is what stock
+it. 20260915 restores Motorola's own saved value instead, which is what stock
 does, and the race is gone.
 
 ## The cover display and the cameras
@@ -276,7 +276,7 @@ upstream it will replace these tweaks.
 *Settings → Display → Continue using apps on fold* offers the same three
 choices as stock: **Always** keeps the app running on the cover, **Swipe up to
 continue** (the default) shows the lock screen on the cover, **Never** turns
-the cover off and locks. Builds before 20260914 behaved like *Always* with no
+the cover off and locks. Builds before 20260915 behaved like *Always* with no
 way to change it.
 
 ## Confirming it worked

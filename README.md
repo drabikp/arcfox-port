@@ -139,9 +139,9 @@ app drawer at full size:
 git -C packages/apps/Launcher3 am arcfox-port/patches/launcher3/cover-display-camera-block-hooks.patch
 ```
 
-DeskClock needs its digital-widget series (sized layouts per display and dp
-text sizes, so the cover clock neither clips nor changes size depending on
-which panel was active when it last updated):
+DeskClock needs its digital-widget series (the clock and date auto-size to
+the box the launcher gives them, so the widget is right on either panel no
+matter which one was active when it last updated):
 
 ```bash
 git -C packages/apps/DeskClock am arcfox-port/patches/deskclock/digital-widget-multidisplay-sizing.patch
@@ -218,7 +218,7 @@ Two rules that cost real time here:
 |---|---|
 | `local_manifest/arcfox.xml` | the `repo` manifest that assembles the whole tree |
 | `scripts/` | kernel assembly, firmware extraction, blob resolution, build and boot-test helpers |
-| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, Launcher3 (cover-display camera block: keyboard and dock kept above the cameras in portrait, camera-side strip reserved in landscape, app drawer kept at full size; widget sizes converted per panel density) and DeskClock (cover clock widget sizing) |
+| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, Launcher3 (cover-display camera block: keyboard and dock kept above the cameras in portrait, camera-side strip reserved in landscape, app drawer kept at full size) and DeskClock (clock widget auto-sizes to its box on either panel) |
 | `kernel-modules-root/` | the `Android.bp`/`Android.mk` stubs for `sm8635-modules/` |
 | `INSTALL-RELEASE.md` | installing a downloaded build (start here as a user) |
 | `INSTALL.md` | installing your own build, and returning to stock |

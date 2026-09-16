@@ -43,7 +43,7 @@ Status words: **met**, **gap**, **untested**, **n/a** (no such hardware or featu
 | `lineage.dependencies` for breakfast/roomservice, LineageOS org only | MUST | **gap** | arcfox has no `lineage.dependencies`; sm8635-common's is an empty stub. Also blobs/kernel live in personal repos, not the LineageOS org |
 | userdebug build | MUST | verify | `ro.build.type=userdebug`, but `ro.debuggable=0` in system/build.prop while rooted debugging works; find what sets it and whether official 23.x userdebug reports the same |
 | GKI: source-built kernel or Google GKI; all feasible modules from source | MUST | met | kernel 6.1.145 built from source via kernel.mk; vendor_dlkm and system_dlkm modules built from source (system_dlkm vermagic matches our kernel) |
-| No software touch-wake without firmware support | MUST | verify | double-tap-to-wake comes through Motorola's touch driver gesture node (`/sys/class/touchscreen/primary/gesture`); confirm the firmware, not the driver, implements it |
+| No software touch-wake without firmware support | MUST | met | Verified 2026-09-16: at screen-off the Goodix drivers send the IC the gesture-mode command 0xA6 (kmsg `enable double gesture mode cmd 0xff7f` / `Send enable gesture mode`), enable IRQ wake, and only react to the IC-reported gesture ID 0xCC; no tap timing or coordinates in the kernel. Stock ships the same modules with the same code path. Details in docs/DT2W.md |
 | No forced fast charge, no register hacks, no custom KSM | MUST | met | nothing of the kind in the tree |
 | Governors and I/O schedulers from the allowed lists | MUST | met | walt/conservative/powersave/performance/schedutil; mq-deadline/kyber/bfq |
 | OEM hotplug drivers only | MUST | met | |
@@ -83,7 +83,7 @@ Status words: **met**, **gap**, **untested**, **n/a** (no such hardware or featu
 4. **LiveDisplay**: bring up `vendor.lineage.livedisplay@2.1-service.sdm` against the QTI color service (the sm8475 official tree is the template).
 5. **Reproducible blobs**: move every `fix-vendor-blobs.sh` edit into `extract-files.py` fixups so a clean extraction yields the shipped set.
 6. **Verification tests** with a written procedure: Wi-Fi hotspot, BT tethering, aptX on a real sink, HDR10 playback, FRP with GApps, emergency dialling without SIM (UI path only), MAC comparison against stock.
-7. **`ro.debuggable` and touch-wake provenance**: two facts to establish, not fixes.
+7. **`ro.debuggable`**: one fact to establish, not a fix (touch-wake provenance is settled, see docs/DT2W.md).
 8. **The cover-panel boot race**: add a boot-time log capture (and quiet `qti_glink_charger`'s 3-second printk) so the next occurrence is diagnosable; a "screen of death" class issue blocks official status.
 9. **Software deviations**: upstream the DeskClock widget series and the Launcher3 drawer-scale hook; decide whether to keep the covered-corner hooks or fall back to the zeekr-style cutout for an official variant.
 10. **Battery drain measurement** over a normal day, with `dumpsys batterystats` before and after.

@@ -244,6 +244,25 @@ between the ROM's restore of the USB configuration and Motorola's init blanking
 it. 20260915 restores Motorola's own saved value instead, which is what stock
 does, and the race is gone.
 
+## Updating from an earlier build
+
+If the phone already runs an arcfox build (20260902 or newer) you need only the
+new ZIP; the package carries its own recovery. Your data, accounts and settings
+stay. Do **not** wipe.
+
+1. Reboot to recovery: `adb reboot recovery`, or from the bootloader
+   `fastboot reboot recovery`.
+2. **Advanced → Enable ADB**, then `adb reboot sideload` and
+   `adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
+3. If you use GApps, answer **yes** to *"To install additional packages, you need
+   to reboot recovery first"* and sideload the GApps package again — the ROM
+   replaces the `product` partition it lives on. See [GAPPS.md](GAPPS.md).
+4. **Reboot system now.**
+
+Builds before 20260910 did not write the new slot's recovery during an update;
+from 20260910 on they do, so after one update both slots carry the current
+recovery.
+
 ## The cover display and the cameras
 
 The cover panel's two rear cameras sit inside the display area, bottom right.

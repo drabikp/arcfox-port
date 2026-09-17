@@ -246,12 +246,14 @@ does, and the race is gone.
 
 ## Updating from an earlier build
 
-If the phone already runs an arcfox build (20260902 or newer) you need only the
-new ZIP; the package carries its own recovery. Your data, accounts and settings
-stay. Do **not** wipe.
+Your data, accounts and settings stay. Do **not** wipe. Which route you take
+depends on the build you are running now.
 
-1. Reboot to recovery: `adb reboot recovery`, or from the bootloader
-   `fastboot reboot recovery`.
+### From 20260915 or newer
+
+Only the new ZIP is needed; the package carries its own recovery.
+
+1. `adb reboot recovery`.
 2. **Advanced → Enable ADB**, then `adb reboot sideload` and
    `adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
 3. If you use GApps, answer **yes** to *"To install additional packages, you need
@@ -259,9 +261,53 @@ stay. Do **not** wipe.
    replaces the `product` partition it lives on. See [GAPPS.md](GAPPS.md).
 4. **Reboot system now.**
 
-Builds before 20260910 did not write the new slot's recovery during an update;
-from 20260910 on they do, so after one update both slots carry the current
-recovery.
+### From 20260902 — read this first
+
+The 20260902 package did not write the `recovery` partition of the slot it
+installed to, so the slot you are running from still has **Motorola's**
+recovery, and no recovery image can start on that build's kernel chain anyway
+(its `vendor_boot` lacks the module set recovery needs). On 20260902 **do not
+use "reboot to recovery"** from the running system, from `adb`, or from the
+bootloader on the current slot: it does not reach recovery, and the request is
+sticky, so the phone keeps trying until a slot with a working recovery is
+active.
+
+The other slot is the one you installed *from*: it still holds stock firmware
+and the LineageOS recovery you flashed at install time, which is a combination
+known to boot. Use it:
+
+1. Reboot to the bootloader (Power + Volume Down from off, or
+   `adb reboot bootloader`).
+2. Find the slot you are on: `fastboot getvar current-slot` (it prints `a` or
+   `b`). The other letter is the stock slot.
+3. Switch to it: `fastboot --set-active=a` or `fastboot --set-active=b`
+   (the letter you are **not** running from).
+4. `fastboot flash recovery recovery.img` with the **new** `recovery.img` —
+   `fastboot` resolves `recovery` to the now-active slot. Then
+   `fastboot reboot recovery`. LineageOS recovery starts on the stock chain,
+   exactly as it did when you first installed.
+5. **Advanced → Enable ADB**, `adb reboot sideload`,
+   `adb sideload lineage-23.2-20260915-UNOFFICIAL-arcfox.zip`. The package
+   installs to the other slot — the one that held 20260902 — and this time
+   writes all 13 partitions, recovery included. It also makes that slot active
+   again.
+6. If you use GApps, take the "reboot recovery" offer and sideload GApps; that
+   reboot lands on the freshly written recovery.
+7. **Reboot system now.**
+
+Do **not** choose "Reboot system now" while the stock slot is active before
+the sideload has run: it would boot Motorola's system against a `/data` it
+cannot read. If that happens, return to the bootloader and start again from
+step 3.
+
+This route follows from how the 20260902 package was built and from the
+recovery behaviour measured on this device; it has not itself been run end to
+end. If it misbehaves, the clean alternative is a fresh install from stock as
+described above, which wipes the phone.
+
+If the phone is already looping on a recovery request: from the bootloader,
+`fastboot --set-active` to the other slot and `fastboot reboot recovery`; the
+slot whose recovery starts clears the request.
 
 ## The cover display and the cameras
 

@@ -221,6 +221,7 @@ Two rules that cost real time here:
 | `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, Launcher3 (cover-display camera block: keyboard and dock kept above the cameras in portrait, camera-side strip reserved in landscape, app drawer kept at full size) and DeskClock (clock widget auto-sizes to its box on either panel) |
 | `kernel-modules-root/` | the `Android.bp`/`Android.mk` stubs for `sm8635-modules/` |
 | `INSTALL-RELEASE.md` | installing a downloaded build (start here as a user) |
+| `CHANGELOG.md` | what changed in each public build |
 | `INSTALL.md` | installing your own build, and returning to stock |
 | `FLASHING.md` | developer runbook: the rules and why each exists |
 | `docs/` | engineering notes: root causes, measurements, and what was deliberately left alone |

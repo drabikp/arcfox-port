@@ -255,7 +255,9 @@ Only the new ZIP is needed; the package carries its own recovery.
 
 1. `adb reboot recovery`.
 2. **Advanced → Enable ADB**, then `adb reboot sideload` and
-   `adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
+   `adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`. After
+   `adb reboot sideload` the recovery restarts and takes up to half a minute
+   to show as `sideload` in `adb devices`; run `adb sideload` once it does.
 3. If you use GApps, answer **yes** to *"To install additional packages, you need
    to reboot recovery first"* and sideload the GApps package again — the ROM
    replaces the `product` partition it lives on. See [GAPPS.md](GAPPS.md).
@@ -300,10 +302,13 @@ the sideload has run: it would boot Motorola's system against a `/data` it
 cannot read. If that happens, return to the bootloader and start again from
 step 3.
 
-This route follows from how the 20260902 package was built and from the
-recovery behaviour measured on this device; it has not itself been run end to
-end. If it misbehaves, the clean alternative is a fresh install from stock as
-described above, which wipes the phone.
+This route was run end to end on 2026-09-17 on a phone staged exactly like a
+20260902 install (stock chain plus LineageOS recovery on one slot, 20260902
+plus Motorola's recovery on the other): data survived, the update landed on
+the 20260902 slot with a working recovery, and the "reboot recovery" offer
+after the sideload booted that new recovery. If it misbehaves for you, the
+clean alternative is a fresh install from stock as described above, which
+wipes the phone.
 
 If the phone is already looping on a recovery request: from the bootloader,
 `fastboot --set-active` to the other slot and `fastboot reboot recovery`; the

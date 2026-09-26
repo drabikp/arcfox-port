@@ -74,14 +74,9 @@ for e in \
   "vendor-qcom-opensource-video-driver:qcom/opensource/video-driver" \
   "vendor-qcom-opensource-graphics-kernel:qcom/opensource/graphics-kernel" \
   "vendor-qcom-opensource-bt-kernel:qcom/opensource/bt-kernel" \
-  "vendor-qcom-opensource-spu-kernel:qcom/opensource/spu-kernel" \
   "vendor-qcom-opensource-mm-sys-kernel:qcom/opensource/mm-sys-kernel" \
   "vendor-qcom-opensource-datarmnet:qcom/opensource/datarmnet" \
   "vendor-qcom-opensource-datarmnet-ext:qcom/opensource/datarmnet-ext" \
-  "vendor-qcom-opensource-wlan-platform:qcom/opensource/wlan/platform" \
-  "vendor-qcom-opensource-wlan-qcacld-3.0:qcom/opensource/wlan/qcacld-3.0" \
-  "vendor-qcom-opensource-wlan-qca-wifi-host-cmn:qcom/opensource/wlan/qca-wifi-host-cmn" \
-  "vendor-qcom-opensource-wlan-fw-api:qcom/opensource/wlan/fw-api" \
   "kernel-msm-techpack-dataipa:qcom/opensource/dataipa" \
   "vendor-nxp-opensource-driver:nxp/opensource/driver" \
   "motorola-kernel-modules:motorola" \
@@ -92,14 +87,13 @@ for e in \
 # (.kiwi_v2 -> .); Motorola's repo omits them. arcfox needs the kiwi_v2 variant
 # (CONFIG_MOT_CNSS_KIWI_V2), and the build derives the profile from the M= dir
 # basename, so recreate the symlink:
-[ -e "$DEST/$M/qcom/opensource/wlan/qcacld-3.0/.kiwi_v2" ] ||   ln -sfn . "$DEST/$M/qcom/opensource/wlan/qcacld-3.0/.kiwi_v2"
 # securemsm: trace_smcinvoke.h defaults SMCINVOKE_TRACE_INCLUDE_PATH to the
 # Android-tree layout (../../../../vendor/qcom/...). In this sibling layout pass
 #   KCFLAGS+=-DSMCINVOKE_TRACE_INCLUDE_PATH=smcinvoke
 # (SSG_MODULE_ROOT is already on LINUXINCLUDE, so the bare subdir resolves).
 
 # camera-kernel: published Kbuild omits the OIS fw objects stock contains
-CPATCH="$(dirname "$0")/patches/camera-kernel/Kbuild-add-ois-fw-objs.patch"
+CPATCH="$(dirname "$0")/../patches/camera-kernel/Kbuild-add-ois-fw-objs.patch"
 if [ -f "$CPATCH" ] && ! /usr/bin/grep -q cam_ois_dw9784 "$DEST/$M/qcom/opensource/camera-kernel/Kbuild" 2>/dev/null; then
   patch -s -p1 -d "$DEST/$M/qcom/opensource/camera-kernel" < "$CPATCH" && log "patched camera-kernel Kbuild (+dw9784 +sem1217s)"
 fi
@@ -151,9 +145,11 @@ if [ ! -d "$DD" ] && [ -d "$XI/qcom/opensource/display-drivers" ]; then
   cp -a "$XI/qcom/opensource/display-drivers" "$DD"
   for f in msm/dsi/dsi_drm.c msm/dsi/dsi_display.h msm/mi_disp/mi_dsi_panel.c \
            msm/sde_dsc_helper.c msm/sde_dsc_helper.h \
-           msm/dsi/dsi_panel.c msm/dsi/dsi_panel.h; do
-    pf="$(dirname "$0")/patches/display-drivers/$(echo "$f" | tr '/' '_').patch"
-    [ -f "$pf" ] && patch -s -p0 -d "$DD" "$f" < "$pf" && log "patched $f"
+           msm/dsi/dsi_panel.c msm/dsi/dsi_panel.h \
+           msm/Kbuild config/gki_pineappledisp.conf; do
+    pf="$(dirname "$0")/../patches/display-drivers/$(echo "$f" | tr '/' '_').patch"
+    [ -f "$pf" ] || { echo "FATAL: missing patch $pf" >&2; exit 1; }
+    patch -s -p0 -d "$DD" "$f" < "$pf" && log "patched $f" || { echo "FATAL: patch failed: $f" >&2; exit 1; }
   done
   log "ok    $M/qcom/opensource/display-drivers  <- LineageOS xiaomi + local patches"
 else
@@ -173,13 +169,17 @@ XI=${XI:-$DEST/sm8635-modules.xiaomi-base}   # synced by local_manifest/arcfox.x
 WL=$DEST/$M/qcom/opensource/wlan
 if [ ! -d "$WL" ] && [ -d "$XI/qcom/opensource/wlan" ]; then
   cp -a "$XI/qcom/opensource/wlan" "$WL"
-  pf="$(dirname "$0")/patches/wlan/qcacld-bootarg-mac.patch"
-  [ -f "$pf" ] && patch -s -p0 -d "$WL/qcacld-3.0/core/hdd/src" wlan_hdd_cfg.c < "$pf" \
-    && log "patched qcacld: bootarg factory MAC"
+  pf="$(dirname "$0")/../patches/wlan/qcacld-bootarg-mac.patch"
+  [ -f "$pf" ] || { echo "FATAL: missing patch $pf" >&2; exit 1; }
+  patch -s -p0 -d "$WL/qcacld-3.0/core/hdd/src" wlan_hdd_cfg.c < "$pf" && log "patched qcacld: bootarg factory MAC" || { echo "FATAL: wlan patch failed" >&2; exit 1; }
   log "ok    $M/qcom/opensource/wlan  <- LineageOS xiaomi + bootarg-MAC patch"
 else
   log "skip  wlan"
 fi
+# qcacld derives its chip profile from the M= directory basename and the CLO
+# packaging ships self-symlinked variant dirs (.kiwi_v2 -> . etc.); the Xiaomi
+# tree carries them, so this only repairs a copy that lost them.
+[ -d "$WL/qcacld-3.0" ] && { [ -e "$WL/qcacld-3.0/.kiwi_v2" ] || ln -sfn . "$WL/qcacld-3.0/.kiwi_v2"; }
 
 cat <<'WARN'
 

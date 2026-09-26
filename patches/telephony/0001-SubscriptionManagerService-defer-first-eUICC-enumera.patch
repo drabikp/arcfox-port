@@ -1,0 +1,139 @@
+From 83b79e10cee571622e23d28132aec67c264a9df8 Mon Sep 17 00:00:00 2001
+From: Peter Drabik <drabikp@posam.sk>
+Date: Sat, 26 Sep 2026 11:10:48 +0200
+Subject: [PATCH 1/2] SubscriptionManagerService: defer first eUICC enumeration
+ and add recovery
+
+On arcfox (SM8635, soldered eUICC in slot 2) the first ES10c GetProfilesInfo,
+sent from the READY transition <3 s after card insertion while the eUICC's own
+USIM reads are in flight, gets no response from the card for ~258 s and the
+modem then closes the ISD-R session. Stock sends the same bytes later and with
+nothing else pending, and succeeds. Nothing ever re-enumerated afterwards.
+
+- Defer the READY-triggered enumeration while any present eUICC port is
+  READY-but-not-LOADED (or still UNKNOWN); NOT_READY keeps triggering, since an
+  eUICC with no enabled profile never leaves it. 15 s fallback if LOADED never comes.
+- Also enumerate on LOADED, which fires ~150 ms after ApduSender frees the
+  channel, so it doubles as the recovery hook.
+- Bounded back-off retry (30/60/120/240 s) on enumeration failure, closing the
+  existing TODO.
+
+Evidence and single-boot acceptance criteria: workspace ESIM-FINDINGS.md.
+
+Change-Id: I8ae0655090ebb3d9ccfe3db1e1d2e3a279909856
+
+diff --git a/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java b/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
+index 4c12127948..0894be3ef9 100644
+--- a/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
++++ b/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
+@@ -1328,6 +1328,12 @@ public class SubscriptionManagerService extends ISub.Stub {
+ 
+             // Marked the previous embedded subscriptions non-embedded if the latest profiles do
+             // not include them anymore.
++            if (isProfileUpdateSuccessful) {
++                mEmbeddedRefreshRetryCount = 0;
++            } else {
++                scheduleEmbeddedSubscriptionsRetry(cardIds);
++            }
++
+             if (isProfileUpdateSuccessful) {
+                 // embeddedSubs contains all the existing embedded subs queried from EuiccManager,
+                 // including active or inactive. If there are any embedded subscription in the
+@@ -1372,6 +1378,61 @@ public class SubscriptionManagerService extends ISub.Stub {
+     /**
+      * Update embedded subscriptions from {@link EuiccController}.
+      */
++    // ---- arcfox eSIM bring-up helpers (workspace ESIM-FINDINGS.md, sections 4-5) ----
++
++    private static final int MAX_EMBEDDED_REFRESH_RETRIES = 4;
++    private static final long EMBEDDED_REFRESH_RETRY_BASE_MS = 30_000L;
++    private static final long DEFERRED_EUICC_ENUM_FALLBACK_MS = 15_000L;
++    private volatile int mEmbeddedRefreshRetryCount = 0;
++    private final Runnable mDeferredEuiccEnumFallback = this::updateEmbeddedSubscriptions;
++
++    /**
++     * True while any present eUICC port has not yet reached LOADED (or NOT_READY, which is
++     * terminal for an eUICC with no enabled profile). Enumerating in that window sends the
++     * first ES10c while the eUICC's own USIM reads are in flight and inside qcril's 3 s
++     * post-insertion guard, which wedges the slot on arcfox.
++     */
++    private boolean shouldDeferEuiccEnumeration() {
++        UiccSlot[] slots = mUiccController.getUiccSlots();
++        if (slots == null) return false;
++        for (UiccSlot slot : slots) {
++            if (slot == null || !slot.isEuicc() || slot.getCardState() == null
++                    || !slot.getCardState().isCardPresent()) {
++                continue;
++            }
++            int[] ports = slot.getPortList();
++            if (ports == null) continue;
++            for (int port : ports) {
++                int phoneId = slot.getPhoneIdFromPortIndex(port);
++                if (phoneId < 0 || phoneId >= mSimState.length) continue;
++                int st = mSimState[phoneId];
++                if (st == TelephonyManager.SIM_STATE_READY
++                        || st == TelephonyManager.SIM_STATE_UNKNOWN) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    private void scheduleDeferredEuiccEnumerationFallback() {
++        mHandler.removeCallbacks(mDeferredEuiccEnumFallback);
++        mHandler.postDelayed(mDeferredEuiccEnumFallback, DEFERRED_EUICC_ENUM_FALLBACK_MS);
++    }
++
++    /** Bounded back-off retry: 30 s, 60 s, 120 s, 240 s. Closes AOSP's own TODO above. */
++    private void scheduleEmbeddedSubscriptionsRetry(@NonNull List<Integer> cardIds) {
++        if (mEmbeddedRefreshRetryCount >= MAX_EMBEDDED_REFRESH_RETRIES) {
++            loge("updateEmbeddedSubscriptions: giving up after "
++                    + mEmbeddedRefreshRetryCount + " retries");
++            return;
++        }
++        long delay = EMBEDDED_REFRESH_RETRY_BASE_MS << mEmbeddedRefreshRetryCount++;
++        logl("updateEmbeddedSubscriptions: scheduling retry " + mEmbeddedRefreshRetryCount
++                + " in " + delay + "ms");
++        mBackgroundHandler.postDelayed(() -> updateEmbeddedSubscriptions(cardIds, null), delay);
++    }
++
+     private void updateEmbeddedSubscriptions() {
+         UiccSlot[] uiccSlots = mUiccController.getUiccSlots();
+         if (uiccSlots != null) {
+@@ -4529,11 +4590,31 @@ public class SubscriptionManagerService extends ISub.Stub {
+                 case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
+                 case TelephonyManager.SIM_STATE_PERM_DISABLED:
+                 case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
+-                case TelephonyManager.SIM_STATE_LOADED:
+                     updateSubscription(slotIndex);
+                     break;
+                 case TelephonyManager.SIM_STATE_NOT_READY:
++                    // An eUICC with no enabled profile never leaves NOT_READY, so this
++                    // transition must keep triggering enumeration (stock AOSP behaviour).
++                    updateEmbeddedSubscriptions();
++                    updateSubscription(slotIndex);
++                    break;
+                 case TelephonyManager.SIM_STATE_READY:
++                    // arcfox: the first ES10c sent while an eUICC port is still loading
++                    // its USIM records (READY but not LOADED, <3 s after card insertion)
++                    // wedges slot 2 for ~258 s. Defer to LOADED; a fallback covers the
++                    // case where LOADED never arrives. See ESIM-FINDINGS.md.
++                    if (shouldDeferEuiccEnumeration()) {
++                        logl("updateSimState: deferring eUICC enumeration until LOADED");
++                        scheduleDeferredEuiccEnumerationFallback();
++                    } else {
++                        updateEmbeddedSubscriptions();
++                    }
++                    updateSubscription(slotIndex);
++                    break;
++                case TelephonyManager.SIM_STATE_LOADED:
++                    // Recovery hook: LOADED fires ~150 ms after ApduSender releases the
++                    // channel, so the card is reachable here even after a wedge.
++                    mHandler.removeCallbacks(mDeferredEuiccEnumFallback);
+                     updateEmbeddedSubscriptions();
+                     updateSubscription(slotIndex);
+                     break;
+-- 
+2.54.0
+

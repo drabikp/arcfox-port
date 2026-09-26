@@ -289,7 +289,7 @@ known to boot. Use it:
    `fastboot reboot recovery`. LineageOS recovery starts on the stock chain,
    exactly as it did when you first installed.
 5. **Advanced → Enable ADB**, `adb reboot sideload`,
-   `adb sideload lineage-23.2-20260915-UNOFFICIAL-arcfox.zip`. The package
+   `adb sideload lineage-23.2-20260926-UNOFFICIAL-arcfox.zip`. The package
    installs to the other slot — the one that held 20260902 — and this time
    writes all 13 partitions, recovery included. It also makes that slot active
    again.

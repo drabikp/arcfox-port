@@ -1,0 +1,47 @@
+From 69f73e238058db23b9a16be1c39aa5668bcd0f1b Mon Sep 17 00:00:00 2001
+From: Peter Drabik <drabikp@posam.sk>
+Date: Sat, 26 Sep 2026 11:32:50 +0200
+Subject: [PATCH 2/2] SubscriptionManagerService: gate the LOADED enumeration
+ trigger too
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Run 1 of the cold-boot test showed the physical SIM reaching LOADED at
++2.9 s and firing the global eUICC enumeration while the eUICC port was
+still READY with its ARA-M open pending — reproducing the wedge the
+READY-side deferral had just avoided. Apply the same deferral check on
+LOADED; the eUICC's own LOADED still enumerates because its state is
+recorded before the switch.
+
+Change-Id: Ie138117fc46d9086f787e9593cc128138af7c166
+
+diff --git a/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java b/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
+index 0894be3ef9..e93fab2b6f 100644
+--- a/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
++++ b/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
+@@ -4614,8 +4614,19 @@ public class SubscriptionManagerService extends ISub.Stub {
+                 case TelephonyManager.SIM_STATE_LOADED:
+                     // Recovery hook: LOADED fires ~150 ms after ApduSender releases the
+                     // channel, so the card is reachable here even after a wedge.
+-                    mHandler.removeCallbacks(mDeferredEuiccEnumFallback);
+-                    updateEmbeddedSubscriptions();
++                    // Gate it the same way as READY: the PHYSICAL SIM reaches LOADED
++                    // ~3 s into boot, and without this check that fired the global
++                    // enumeration inside the wedge window (run1, ESIM-FINDINGS.md).
++                    // When the eUICC itself reaches LOADED its state is already
++                    // recorded above, so the check passes and enumeration proceeds.
++                    if (shouldDeferEuiccEnumeration()) {
++                        logl("updateSimState: slot " + slotIndex + " LOADED but an eUICC"
++                                + " port is still loading; deferring enumeration");
++                        scheduleDeferredEuiccEnumerationFallback();
++                    } else {
++                        mHandler.removeCallbacks(mDeferredEuiccEnumFallback);
++                        updateEmbeddedSubscriptions();
++                    }
+                     updateSubscription(slotIndex);
+                     break;
+                 case TelephonyManager.SIM_STATE_CARD_RESTRICTED:
+-- 
+2.54.0
+

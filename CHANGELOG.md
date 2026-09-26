@@ -8,6 +8,55 @@ update procedures are in [INSTALL-RELEASE.md](INSTALL-RELEASE.md).
 
 ---
 
+## 20260926
+
+Third public release. Updating from 20260915 is a normal sideload
+([INSTALL-RELEASE.md](INSTALL-RELEASE.md)); from 20260902 use the dedicated route.
+
+### Fixed
+
+- **eSIM works, without Google apps.** The eUICC is detected, the pre-installed
+  LPA runs GMS-free, profiles enumerate at boot, a QR download from an SM-DP+
+  completes, profiles can be enabled/switched (two at once — the eUICC supports
+  MEP), and mobile data attaches on the eSIM. Previously the eSIM list came up
+  empty for the first ~4 minutes after every boot and downloads failed.
+- **Root cause of that eSIM outage removed.** The QTI secure-element HAL's `eSE1`
+  instance never manages to open the embedded secure element on this build and
+  "recovers" by cold-resetting it through the NFC controller; the same chip
+  carries the eUICC, so the modem lost the card for ~258 s after every boot.
+  Nothing on this build uses `eSE1` (the Thales StrongBox/weaver clients are not
+  shipped), so it is no longer declared and the HAL is not started. SIM OMAPI
+  terminals are unaffected (they are served by the RIL), and NFC is unchanged.
+  Details and evidence: the device tree's `fix-vendor-blobs.sh` (fixups 6/7) and
+  the port's `ESIM-FINDINGS.md`.
+- **eSIM list survives a late card.** The framework re-enumerates embedded
+  subscriptions when the eUICC reaches LOADED and retries with a bounded
+  back-off, so a slow card no longer leaves the list empty until reboot.
+- **eSIM wizard follows dark theme.** Google's LPA asks the (absent, GApps-only)
+  SetupWizard partner provider whether to use day/night; a small provider now
+  answers, and yields to the real one when GApps are installed.
+- **Motorola's eSE restart trigger no longer denied by SELinux** (`vendor.ese.*`
+  property grant for `vendor_init`).
+
+### Verified this cycle
+
+- Two cold boots of the release image: eSIM enumeration within 0.3 s of the SIM
+  loading, zero slot-2 wedge signatures, SIM1/SIM2 OMAPI connected, NFC on, LTE
+  data validated on the eSIM, USB debugging persistent, no tombstones.
+- End-to-end eSIM download and activation of a Truphone/1Global profile on this
+  build; roaming data on LTE.
+
+### Known issues
+
+- No `eSE1` (embedded secure element) OMAPI reader: StrongBox-backed keys and
+  off-host card emulation on the eSE are not available. Payments via HCE are
+  unaffected.
+- Rarely a boot comes up with the cover panel not enumerated (bootloader logo on
+  the cover, inner display fine). A reboot clears it.
+- Occasionally USB comes up MTP-only after a reboot, with no adb.
+
+---
+
 ## 20260915
 
 Second public release. Updating from 20260902 needs the

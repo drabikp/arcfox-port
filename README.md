@@ -147,6 +147,14 @@ matter which one was active when it last updated):
 git -C packages/apps/DeskClock am arcfox-port/patches/deskclock/digital-widget-multidisplay-sizing.patch
 ```
 
+The telephony framework needs the eSIM enumeration series (re-enumerate the
+embedded subscriptions when the eUICC reaches LOADED, with a bounded retry; the
+wedge itself is fixed in the device tree, this is the safety net):
+
+```bash
+git -C frameworks/opt/telephony am arcfox-port/patches/telephony/*.patch
+```
+
 ### 3. Firmware
 
 Get a stock firmware package for the **W1UXS36H.72-45-10-7** train. Motorola's

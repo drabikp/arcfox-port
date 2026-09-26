@@ -155,6 +155,25 @@ wedge itself is fixed in the device tree, this is the safety net):
 git -C frameworks/opt/telephony am arcfox-port/patches/telephony/*.patch
 ```
 
+### Reproducing a release exactly
+
+`local_manifest/arcfox.xml` floats on `lineage-23.2`, so a fresh sync picks up
+whatever LineageOS has merged since. To rebuild the tree a release came from,
+use its pinned manifest (every project at the exact commit; the two projects
+that carry hand-applied patches — `frameworks/opt/telephony`, `packages/apps/Launcher3`
+— are pinned to their upstream base and get the patches from `patches/` as above):
+
+```bash
+repo init -u https://github.com/LineageOS/android -b lineage-23.2 --git-lfs
+cp arcfox-port/local_manifest/manifest-20260926-pinned.xml .repo/manifests/
+repo init -m manifest-20260926-pinned.xml
+repo sync -c -j8
+```
+
+Then continue with the kernel-tree assembly, the patches, the firmware
+extraction and `fix-vendor-blobs.sh` exactly as below. Images will not be
+bit-identical (build date/number are embedded) but carry the same sources.
+
 ### 3. Firmware
 
 Get a stock firmware package for the **W1UXS36H.72-45-10-7** train. Motorola's

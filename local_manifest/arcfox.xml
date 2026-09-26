@@ -147,8 +147,32 @@
            remote="gh-arcfox" revision="refs/heads/arcfox-sk-translation" />
 
   <remove-project name="LineageOS/android_hardware_qcom-caf_common" />
+  <!-- The linkfile children below are copied verbatim from LineageOS's own entry
+       (snippets/lineage.xml). They plant os_pickup.bp/.mk as Android.bp/Android.mk
+       into every hardware/qcom-caf/<ver>/ directory, which is what puts each
+       qcom-caf HAL tree in its own soong namespace. A remove-project + re-add
+       without them makes repo DELETE those symlinks on the next sync, and soong
+       then fails with "module ... already defined" across the audio trees
+       (found 2026-09-27 on the first build from this manifest). -->
   <project path="hardware/qcom-caf/common" name="android_hardware_qcom-caf_common"
-           remote="gh-arcfox" revision="refs/heads/arcfox-vndfwk-camera-gate" />
+           remote="gh-arcfox" revision="refs/heads/arcfox-vndfwk-camera-gate">
+    <linkfile src="os_pickup_aosp.mk" dest="hardware/qcom/Android.mk" />
+    <linkfile src="os_pickup_sepolicy_vndr.mk" dest="device/qcom/sepolicy_vndr/SEPolicy.mk" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/msm8953/Android.bp" />
+    <linkfile src="os_pickup.bp" dest="hardware/qcom-caf/msm8996/Android.bp" />
+    <linkfile src="os_pickup.mk" dest="hardware/qcom-caf/msm8996/Android.mk" />
+    <linkfile src="os_pickup.bp" dest="hardware/qcom-caf/msm8998/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sdm660/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sdm845/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8150/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8250/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8350/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8450/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8450-6.6/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8550/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8650/Android.bp" />
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8750/Android.bp" />
+  </project>
 
   <remove-project name="LineageOS/android_packages_apps_DeskClock" />
   <project path="packages/apps/DeskClock" name="android_packages_apps_DeskClock"

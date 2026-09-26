@@ -305,7 +305,24 @@
   <project name="android_device_motorola_sm8635-common" path="device/motorola/sm8635-common" remote="gh-arcfox" revision="949ec7760f44dfab081d8a0475cc2e2e35367799" upstream="refs/heads/master" dest-branch="refs/heads/master" groups="local::arcfox"/>
   <project name="android_frameworks_av" path="frameworks/av" remote="gh-arcfox" revision="74534fb16438bd1e2eb448f8b9f0849e674199de" upstream="refs/heads/arcfox-blob-abi-shims" dest-branch="refs/heads/arcfox-blob-abi-shims" groups="local::arcfox"/>
   <project name="android_frameworks_native" path="frameworks/native" remote="gh-arcfox" revision="60ed8c511cdaa327faf3d327fcab536324fc349f" upstream="refs/heads/arcfox-libbinder-atrace-shims" dest-branch="refs/heads/arcfox-libbinder-atrace-shims" groups="local::arcfox"/>
-  <project name="android_hardware_qcom-caf_common" path="hardware/qcom-caf/common" remote="gh-arcfox" revision="689b68354097c102bf4f309ba831fab5da05dd53" upstream="refs/heads/arcfox-vndfwk-camera-gate" dest-branch="refs/heads/arcfox-vndfwk-camera-gate" groups="local::arcfox"/>
+  <project name="android_hardware_qcom-caf_common" path="hardware/qcom-caf/common" remote="gh-arcfox" revision="689b68354097c102bf4f309ba831fab5da05dd53" upstream="refs/heads/arcfox-vndfwk-camera-gate" dest-branch="refs/heads/arcfox-vndfwk-camera-gate" groups="local::arcfox">
+    <linkfile src="os_pickup_aosp.mk" dest="hardware/qcom/Android.mk"/>
+    <linkfile src="os_pickup_sepolicy_vndr.mk" dest="device/qcom/sepolicy_vndr/SEPolicy.mk"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/msm8953/Android.bp"/>
+    <linkfile src="os_pickup.bp" dest="hardware/qcom-caf/msm8996/Android.bp"/>
+    <linkfile src="os_pickup.mk" dest="hardware/qcom-caf/msm8996/Android.mk"/>
+    <linkfile src="os_pickup.bp" dest="hardware/qcom-caf/msm8998/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sdm660/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sdm845/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8150/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8250/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8350/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8450/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8450-6.6/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8550/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8650/Android.bp"/>
+    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8750/Android.bp"/>
+  </project>
   <project name="android_kernel_motorola_sm8635" path="kernel/motorola/sm8635" remote="gh-arcfox" revision="770a722b9ca75cf73efdfd8275732e4623d8af04" upstream="refs/heads/arcfox-ack-merge" dest-branch="refs/heads/arcfox-ack-merge" groups="local::arcfox" clone-depth="1"/>
   <project name="android_kernel_xiaomi_sm8635-modules" path="kernel/motorola/sm8635-modules.xiaomi-base" remote="gh-los" revision="ed4ad0d1ad00b755af2fe61387dcc5397ad20b8f" upstream="refs/heads/lineage-23.2" dest-branch="refs/heads/lineage-23.2" groups="local::arcfox" clone-depth="1"/>
   <project name="android_packages_apps_CarrierConfig" path="packages/apps/CarrierConfig" remote="gh-arcfox" revision="99abcba7933c0710c2682ab77f7a6ef19ba2209c" upstream="refs/heads/arcfox-orange-sk-ims" dest-branch="refs/heads/arcfox-orange-sk-ims" groups="local::arcfox"/>

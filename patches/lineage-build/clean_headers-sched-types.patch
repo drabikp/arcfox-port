@@ -1,11 +1,37 @@
---- /tmp/claude-1000/clean_headers.sh.bak	2026-08-31 11:51:31.528691064 +0200
-+++ $HOME/android/arcfox/vendor/lineage/tools/clean_headers.sh	2026-08-31 11:54:18.173929773 +0200
-@@ -6,3 +6,17 @@
+From cc1c734904f657dfa947fd60d868bf7ce0688768 Mon Sep 17 00:00:00 2001
+From: drabikp <drabik.p@gmail.com>
+Date: Tue, 1 Sep 2026 11:08:14 +0200
+Subject: [PATCH] clean_headers: drop struct sched_param from the generated
+ uapi header
+
+Building against generated kernel headers fails with
+
+  bionic/libc/include/sched.h:99: error: redefinition of 'sched_param'
+
+because bionic's <sched.h> both defines struct sched_param itself and
+includes <linux/sched/types.h>, whose kernel uapi copy defines it too. Bionic
+avoids the collision in its own sanitized tree by omitting sched_param from
+bionic/libc/kernel/uapi/linux/sched/types.h, which keeps only sched_attr.
+clean_header.py does not perform that removal, so do it here.
+
+The kernel source header is stock upstream rather than vendor-modified, so
+nothing else is lost with it.
+
+Change-Id: Iee6175a2cb9320cfd4401c0a6af73e45ef9d5649
+---
+ tools/clean_headers.sh | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/tools/clean_headers.sh b/tools/clean_headers.sh
+index 44053a31..2f06e42e 100755
+--- a/tools/clean_headers.sh
++++ b/tools/clean_headers.sh
+@@ -6,3 +6,17 @@ export ANDROID_BUILD_TOP="$PWD"
  ./bionic/libc/kernel/tools/clean_header.py -u \
      "$1/usr/include/asm/signal.h" \
      "$1/usr/include/asm-generic/signal.h"
 +
-+# arcfox: bionic's own <sched.h> defines struct sched_param and ALSO includes
++# bionic's own <sched.h> defines struct sched_param and ALSO includes
 +# <linux/sched/types.h>. The kernel's uapi copy defines it too, so when the
 +# generated kernel include dir shadows bionic's sanitized uapi copy the two
 +# collide:
@@ -18,3 +44,6 @@
 +if [ -f "$SCHED_TYPES" ]; then
 +    sed -i '/^struct sched_param {$/,/^};$/d' "$SCHED_TYPES"
 +fi
+-- 
+2.54.0
+

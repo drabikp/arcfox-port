@@ -45,6 +45,9 @@ Third public release. Updating from 20260915 is a normal sideload
   data validated on the eSIM, USB debugging persistent, no tombstones.
 - End-to-end eSIM download and activation of a Truphone/1Global profile on this
   build; roaming data on LTE.
+- Kernel history was rewritten (commit messages only, trees identical), so the
+  image's `uname -r` suffix `-g72b4ab58e3a6` names the pre-rewrite hash; the same
+  tree is now `770a722b9ca75` on `arcfox-ack-merge`.
 
 ### Known issues
 

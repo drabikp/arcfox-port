@@ -127,6 +127,12 @@ does not build. Both are taken from LineageOS's Xiaomi sm8635-modules tree
 cp arcfox-port/kernel-modules-root/Android.{bp,mk} kernel/motorola/sm8635-modules/
 ```
 
+Run it from the Android top with `arcfox-port` cloned inside it (the script derives
+the kernel directory from its own location); from anywhere else pass
+`DEST=<top>/kernel/motorola XI=<top>/kernel/motorola/sm8635-modules.xiaomi-base`.
+It needs the `kernel/motorola/sm8635-modules.xiaomi-base` project from the
+manifest to be synced, and it now aborts loudly if any patch is missing or fails.
+
 The root `Android.mk` is deliberately empty — it stops `kati` descending into
 the techpack DLKM wrappers, which are built out of tree by
 `vendor/lineage/build/tasks/kernel.mk`.

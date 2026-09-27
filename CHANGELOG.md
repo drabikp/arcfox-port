@@ -72,7 +72,14 @@ hid it).
 
 - No `eSE1` (embedded secure element) OMAPI reader: StrongBox-backed keys and
   off-host card emulation on the eSE are not available. Payments via HCE are
-  unaffected.
+  unaffected. **This is settled, not a bug being chased.** The element gates
+  access behind a Root of Trust the TEE re-establishes from factory-locked keys
+  and the verified-boot state; that cannot be reproduced on an unlocked,
+  self-signed build, and the Thales StrongBox stack that drives it is not
+  functional on LineageOS userspace. No Motorola LineageOS tree ships it: the
+  official razr 40 ultra and the sm8635 sibling both drop the eSE reader the same
+  way and use TEE-backed keymint only. Investigated in depth; do not expect this
+  to change.
 - Rarely a boot comes up with the cover panel not enumerated (bootloader logo on
   the cover, inner display fine). A reboot clears it.
 - Occasionally USB comes up MTP-only after a reboot, with no adb.

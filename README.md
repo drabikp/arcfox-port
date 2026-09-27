@@ -178,7 +178,16 @@ repo sync -c -j8
 
 Then continue with the kernel-tree assembly, the patches, the firmware
 extraction and `fix-vendor-blobs.sh` exactly as below. Images will not be
-bit-identical (build date/number are embedded) but carry the same sources.
+bit-identical (build date, module signatures, AVB salts and the kernel git hash
+are embedded) but carry the same sources: a from-scratch rebuild of 20260926
+matched 9576 of 10470 packaged files byte-for-byte, with every difference
+accounted for.
+
+Build releases from a clean `out/` (`rm -rf out`). The package `bacon` produces
+is assembled from the target-files staging directory, which incremental builds
+never prune, so an old tree can ship files the sources no longer produce. Test
+the images that go into the zip (`obj/PACKAGING/target_files_intermediates/*/IMAGES/`),
+not `out/target/product/arcfox/*.img`.
 
 ### 3. Firmware
 

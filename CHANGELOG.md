@@ -13,6 +13,27 @@ update procedures are in [INSTALL-RELEASE.md](INSTALL-RELEASE.md).
 Third public release. Updating from 20260915 is a normal sideload
 ([INSTALL-RELEASE.md](INSTALL-RELEASE.md)); from 20260902 use the dedicated route.
 
+**Rebuilt 2026-09-27 from a clean tree** (`rm -rf out`, no ccache, pinned
+manifest, published bootstrap scripts). Same sources, same file name; the new
+package's SHA-256 is `a681c17e9ca9ab687376a66bde00eaf8799f15fdfc7a07b1648918329040f693`.
+The first upload (`51a2d629…2430`) had been packaged from an incrementally
+built tree and carried ~130 stale files that a from-scratch build does not
+produce: 60 GKI modules from an older kernel build duplicated into
+`vendor_dlkm` (never in `modules.load`; the `system_dlkm` copies load first),
+64 flat leftovers in `system_dlkm`, two unused wlan modules in the
+`vendor_boot` ramdisk and one duplicated system library. No functional
+difference was found, but the rebuilt package is the one to install. 9576 of
+10470 packaged files are byte-identical between the two; every other difference
+is a build date, signature, salt or the kernel git hash. Verified again with
+two cold boots (eSIM enumeration, LTE data on the eSIM, Wi-Fi, NFC, OMAPI,
+adb, zero tombstones).
+
+Reproducibility fixes found by that rebuild, all pushed: `setup-kernel-repos.sh`
+applied none of its patches (wrong path), the local manifest dropped LineageOS's
+`hardware/qcom-caf` namespace linkfiles, and the device tree built the wlan
+module before the `dataipa` symbols it links against (only an incremental tree
+hid it).
+
 ### Fixed
 
 - **eSIM works, without Google apps.** The eUICC is detected, the pre-installed

@@ -1226,7 +1226,7 @@
   <project name="vendor-qcom-opensource-mmrm-driver" path="kernel/motorola/sm8635-modules/qcom/opensource/mmrm-driver" remote="gh-moto" revision="35211a9255b69d52ddc2b82dc8b1dd2840b98868" upstream="refs/tags/MMI-W1UXS36H.72-45-4-1" dest-branch="refs/tags/MMI-W1UXS36H.72-45-4-1" groups="local::arcfox" clone-depth="1"/>
   <project name="vendor-qcom-opensource-securemsm-kernel" path="kernel/motorola/sm8635-modules/qcom/opensource/securemsm-kernel" remote="gh-arcfox" revision="efe4ee1645537ab76984a8b2a4bd18447e12afd9" upstream="refs/heads/arcfox-kernel-mk-port" dest-branch="refs/heads/arcfox-kernel-mk-port" groups="local::arcfox" clone-depth="1"/>
   <project name="vendor-qcom-opensource-synx-kernel" path="kernel/motorola/sm8635-modules/qcom/opensource/synx-kernel" remote="gh-moto" revision="51b2182feaa4fc82e1d3575f48d3414533f8acfa" upstream="refs/tags/MMI-W1UXS36H.72-45-4-1" dest-branch="refs/tags/MMI-W1UXS36H.72-45-4-1" groups="local::arcfox" clone-depth="1"/>
-  <project name="vendor-qcom-opensource-video-driver" path="kernel/motorola/sm8635-modules/qcom/opensource/video-driver" remote="gh-arcfox" revision="58d4668ea7e627434d6341538ff69c7f197b7286" upstream="refs/heads/arcfox-kernel-mk-port" dest-branch="refs/heads/arcfox-kernel-mk-port" groups="local::arcfox" clone-depth="1"/>
+  <project name="vendor-qcom-opensource-video-driver" path="kernel/motorola/sm8635-modules/qcom/opensource/video-driver" remote="gh-arcfox" revision="70145df020f26c386a4b1b6ac80283d7cf125f87" upstream="refs/heads/arcfox-kernel-mk-port" dest-branch="refs/heads/arcfox-kernel-mk-port" groups="local::arcfox" clone-depth="1"/>
   
   <contactinfo bugurl="go/repo-bug"/>
 </manifest>

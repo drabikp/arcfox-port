@@ -301,7 +301,7 @@
   <project name="LineageOS/mirror" path="lineage/mirror" revision="8e2bd4306f1430b2c0772f4f0349af4d0ccfb397" upstream="main" dest-branch="main" groups="infra"/>
   <project name="LineageOS/scripts" path="lineage/scripts" revision="f93bac0cd31802236efa2095fb75536a6f6e731e" upstream="main" dest-branch="main" groups="tools"/>
   <project name="LineageOS/www" path="lineage/website" revision="cae5e9e3b212568716b865d7d532da72cb24c23b" upstream="main" dest-branch="main" groups="infra"/>
-  <project name="android_device_motorola_arcfox" path="device/motorola/arcfox" remote="gh-arcfox" revision="4de3f663f35839a163f19de4a91a57d04f4c62f9" upstream="refs/heads/master" dest-branch="refs/heads/master" groups="local::arcfox"/>
+  <project name="android_device_motorola_arcfox" path="device/motorola/arcfox" remote="gh-arcfox" revision="250e467f48102ee03be5b13f9f6ba10207f31dd5" upstream="refs/heads/master" dest-branch="refs/heads/master" groups="local::arcfox"/>
   <project name="android_device_motorola_sm8635-common" path="device/motorola/sm8635-common" remote="gh-arcfox" revision="b0c06aee1c1fec61ea7d48e1f8dcce62939a369d" upstream="refs/heads/master" dest-branch="refs/heads/master" groups="local::arcfox"/>
   <project name="android_frameworks_av" path="frameworks/av" remote="gh-arcfox" revision="74534fb16438bd1e2eb448f8b9f0849e674199de" upstream="refs/heads/arcfox-blob-abi-shims" dest-branch="refs/heads/arcfox-blob-abi-shims" groups="local::arcfox"/>
   <project name="android_frameworks_native" path="frameworks/native" remote="gh-arcfox" revision="60ed8c511cdaa327faf3d327fcab536324fc349f" upstream="refs/heads/arcfox-libbinder-atrace-shims" dest-branch="refs/heads/arcfox-libbinder-atrace-shims" groups="local::arcfox"/>

@@ -22,7 +22,7 @@ Verified on a flashed build, cold-booted:
 | | |
 |---|---|
 | Telephony | VoLTE (calls stay on IMS, no SRVCC), VoWiFi, mobile data, SMS, emergency calling |
-| Display | both panels (inner 1080x2640 + cover), posture-driven routing, wake on open, fold behaviour setting (Always / Swipe up / Never) |
+| Display | both panels (inner 1080x2640 + cover), posture-driven routing, wake on open, fold behaviour setting (Always / Swipe up / Never), 120 Hz by default and up to 165 Hz (Settings → Display → Peak refresh rate), 24 Hz when idle |
 | Input | both touchscreens, double-tap-to-wake on each |
 | Camera | 3 cameras, API1 and API2, video recording |
 | Sensors | 79 sensors, all fold postures commit |
@@ -171,8 +171,8 @@ that carry hand-applied patches — `frameworks/opt/telephony`, `packages/apps/L
 
 ```bash
 repo init -u https://github.com/LineageOS/android -b lineage-23.2 --git-lfs
-cp arcfox-port/local_manifest/manifest-20260926-pinned.xml .repo/manifests/
-repo init -m manifest-20260926-pinned.xml
+cp arcfox-port/local_manifest/manifest-20260928-pinned.xml .repo/manifests/
+repo init -m manifest-20260928-pinned.xml
 repo sync -c -j8
 ```
 

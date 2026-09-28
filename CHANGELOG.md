@@ -8,6 +8,54 @@ update procedures are in [INSTALL-RELEASE.md](INSTALL-RELEASE.md).
 
 ---
 
+## 20260928
+
+Fourth public release. Updating from 20260915 or newer is a normal sideload
+([INSTALL-RELEASE.md](INSTALL-RELEASE.md)); from 20260902 use the dedicated route.
+
+**Built 2026-09-28 from a clean tree** (`rm -rf out`, pinned manifest
+`manifest-20260928-pinned.xml`); SHA-256
+`e8ae1108f74cc9c5aec9c56c8e3afc87bde4a1799c80c141f079244df266cf45`.
+The only source change since 20260926 is the device tree commit below.
+
+### Fixed
+
+- **Display no longer capped at 60 Hz.** The build left the framework's
+  `config_defaultRefreshRate` at AOSP's 60 and `config_defaultPeakRefreshRate`
+  at 0, so DisplayModeDirector cast a global 0–60 Hz render vote that nothing
+  widened: both panels (24/30/60/90/120/165 Hz) scrolled at 60 Hz, and even a
+  user `peak_refresh_rate` of 165 had no effect. The device tree now carries
+  Motorola's own values from the stock vendor overlay (default 0, peak 120),
+  which is also what stock Settings' default "High" mode writes.
+- **Peak refresh rate setting.** Settings → Display → Peak refresh rate
+  (LineageOS's list) is enabled: 120 Hz by default, up to 165 Hz selectable.
+  The minimum refresh rate list stays hidden, since a minimum equal to the
+  peak pins the panel at full rate.
+
+### Verified this cycle
+
+- The installed zip, sideloaded over 20260926 with data kept: inner display
+  120 Hz while scrolling and 24 Hz idle; 165 selected in Settings gives
+  165 Hz; cover display (folded) 120 Hz scrolling and 24 Hz idle.
+- Payload: 391 `vendor_dlkm` and 60 `system_dlkm` modules, every vermagic
+  matching the kernel (`6.1.145-20325-g770a722b9ca7`); recovery in the payload
+  byte-identical to the published `recovery.img`.
+
+### Known issues
+
+- Unchanged from 20260926. Motorola-private refresh tuning (the cover panel's
+  90 Hz dim-light zone, Gametime's 165 Hz) needs Motorola's framework and is
+  not reproduced; the standard AOSP policy runs with stock's default values.
+
+### Correction
+
+- `manifest-20260926-pinned.xml` pinned `sm8635-common` at `949ec77`, one
+  commit before the kernel-module ordering fix (`b0c06ae`) that the published
+  20260926 package was built with; a rebuild from it failed in MODPOST. It now
+  pins `b0c06ae`.
+
+---
+
 ## 20260926
 
 Third public release. Updating from 20260915 is a normal sideload

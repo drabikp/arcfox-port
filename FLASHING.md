@@ -245,12 +245,14 @@ O=$HOME/android/arcfox/out/target/product/arcfox
 
 | What | Where |
 |---|---|
-| Last-good images (`boot_a`, `vendor_boot_a`, `dtbo_a`, `vbmeta_a`, `super.img` 26,616,004,608 B) | `~/android/arcfox-backups/last-good-20260828/` |
+| Last published release (OTA zip, `recovery.img`, all partition images) | `~/android/arcfox-releases/20260928/` |
 | Stock logical-partition dump (`system_a`, `vendor_a`, `product_a`, `system_ext_a`, both dlkm, `super`) | `~/android/firmware/W1UXS36H/images/` |
 | Full stock restore | `./restore-stock.sh --full` |
 
-The stock dump has **no** `vendor_boot`/`boot`; those come only from the
-`arcfox-backups` set. Do not overwrite that directory.
+The stock logical-partition dump has **no** `vendor_boot`/`boot`; take stock
+ones from the RSA package (`~/android/firmware/W1UXS36H/rsa/`: `boot`,
+`vendor_boot`, `init_boot`, `dtbo`, `vbmeta`, `vbmeta_system`). The August
+`arcfox-backups` set is gone (deleted 2026-10-12, superseded by the releases).
 
 ## Post-flash verification
 

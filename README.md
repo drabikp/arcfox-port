@@ -222,7 +222,7 @@ brunch arcfox
 Use `breakfast`, never a hand-written `lunch` target — a guessed
 `lunch lineage_arcfox-bp2a-userdebug` silently drops ~1400 release-config flag
 overrides and ships a year-stale security patch string. `breakfast` resolves
-the correct `bp4a` release config.
+the correct release config (`cp2a` on 24.0, `bp4a` on 23.2).
 
 Output: `out/target/product/arcfox/lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
 

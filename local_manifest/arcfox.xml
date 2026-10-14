@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  arcfox (Motorola razr 50 ultra, SM8635) - LineageOS 23.2
+  arcfox (Motorola razr 50 ultra, SM8635) - LineageOS 24.0
 
-  Drop this at .repo/local_manifests/arcfox.xml on top of a lineage-23.2 tree:
+  Drop this at .repo/local_manifests/arcfox.xml on top of a lineage-24.0 tree:
 
-      repo init -u https://github.com/LineageOS/android.git -b lineage-23.2
+      repo init -u https://github.com/LineageOS/android.git -b lineage-24.0
       mkdir -p .repo/local_manifests
       curl -o .repo/local_manifests/arcfox.xml \
-        https://raw.githubusercontent.com/drabikp/arcfox-port/master/local_manifest/arcfox.xml
+        https://raw.githubusercontent.com/drabikp/arcfox-port/lineage-24.0/local_manifest/arcfox.xml
       repo sync -c -j8
 
   Proprietary blobs are NOT published here. After syncing, run
@@ -22,6 +22,9 @@
 
   <!-- ==================================================================
        1. Device trees
+
+       Still master (= the 23.2 line) while the 24.0 port is local-only; the
+       24.0 work lives on local lineage-24.0 branches until it is published.
        ================================================================== -->
   <project path="device/motorola/arcfox"
            name="android_device_motorola_arcfox"
@@ -121,74 +124,15 @@
     -->
   <project path="kernel/motorola/sm8635-modules.xiaomi-base"
            name="android_kernel_xiaomi_sm8635-modules"
-           remote="gh-los" revision="refs/heads/lineage-23.2" clone-depth="1" />
+           remote="gh-los" revision="ed4ad0d1ad00b755af2fe61387dcc5397ad20b8f"
+           upstream="refs/heads/lineage-23.2" clone-depth="1" />
 
   <!-- ==================================================================
        4. Platform repositories carrying arcfox changes
 
-       Each is a fork of the LineageOS repo the manifest would otherwise
-       sync, on a branch holding only the arcfox commits. remove-project
-       first, because a local manifest cannot redefine an existing path.
+       24.0 port in progress: every platform project is LineageOS's own
+       lineage-24.0 until its 23.2 fork has been re-checked against 24.0.
+       Forks that are still needed come back here on an arcfox-24.0 branch.
        ================================================================== -->
-  <remove-project name="LineageOS/android_frameworks_av" />
-  <project path="frameworks/av" name="android_frameworks_av"
-           remote="gh-arcfox" revision="refs/heads/arcfox-blob-abi-shims" />
-
-  <remove-project name="LineageOS/android_frameworks_native" />
-  <project path="frameworks/native" name="android_frameworks_native"
-           remote="gh-arcfox" revision="refs/heads/arcfox-libbinder-atrace-shims" />
-
-  <remove-project name="LineageOS/android_packages_apps_Settings" />
-  <project path="packages/apps/Settings" name="android_packages_apps_Settings"
-           remote="gh-arcfox" revision="refs/heads/arcfox-face-enroll-preview" />
-
-  <remove-project name="LineageOS/android_packages_apps_SetupWizard" />
-  <project path="packages/apps/SetupWizard" name="android_packages_apps_SetupWizard"
-           remote="gh-arcfox" revision="refs/heads/arcfox-sk-translation" />
-
-  <remove-project name="LineageOS/android_hardware_qcom-caf_common" />
-  <!-- The linkfile children below are copied verbatim from LineageOS's own entry
-       (snippets/lineage.xml). They plant os_pickup.bp/.mk as Android.bp/Android.mk
-       into every hardware/qcom-caf/<ver>/ directory, which is what puts each
-       qcom-caf HAL tree in its own soong namespace. A remove-project + re-add
-       without them makes repo DELETE those symlinks on the next sync, and soong
-       then fails with "module ... already defined" across the audio trees
-       (found 2026-09-27 on the first build from this manifest). -->
-  <project path="hardware/qcom-caf/common" name="android_hardware_qcom-caf_common"
-           remote="gh-arcfox" revision="refs/heads/arcfox-vndfwk-camera-gate">
-    <linkfile src="os_pickup_aosp.mk" dest="hardware/qcom/Android.mk" />
-    <linkfile src="os_pickup_sepolicy_vndr.mk" dest="device/qcom/sepolicy_vndr/SEPolicy.mk" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/msm8953/Android.bp" />
-    <linkfile src="os_pickup.bp" dest="hardware/qcom-caf/msm8996/Android.bp" />
-    <linkfile src="os_pickup.mk" dest="hardware/qcom-caf/msm8996/Android.mk" />
-    <linkfile src="os_pickup.bp" dest="hardware/qcom-caf/msm8998/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sdm660/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sdm845/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8150/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8250/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8350/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8450/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8450-6.6/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8550/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8650/Android.bp" />
-    <linkfile src="os_pickup_qssi.bp" dest="hardware/qcom-caf/sm8750/Android.bp" />
-  </project>
-
-  <remove-project name="LineageOS/android_packages_apps_DeskClock" />
-  <project path="packages/apps/DeskClock" name="android_packages_apps_DeskClock"
-           remote="gh-arcfox" revision="refs/heads/arcfox-widget-multidisplay-sizing" />
-
-  <remove-project name="LineageOS/android_vendor_lineage" />
-  <project path="vendor/lineage" name="android_vendor_lineage"
-           remote="gh-arcfox" revision="refs/heads/arcfox-clean-headers-sched-param" />
-
-  <remove-project name="LineageOS/android_vendor_qcom_opensource_interfaces" />
-  <project path="vendor/qcom/opensource/interfaces" name="android_vendor_qcom_opensource_interfaces"
-           remote="gh-arcfox" revision="refs/heads/arcfox-btaudio-lhdcv5" />
-
-  <!-- CarrierConfig is an AOSP project, not a LineageOS one. -->
-  <remove-project name="platform/packages/apps/CarrierConfig" />
-  <project path="packages/apps/CarrierConfig" name="android_packages_apps_CarrierConfig"
-           remote="gh-arcfox" revision="refs/heads/arcfox-orange-sk-ims" />
 
 </manifest>

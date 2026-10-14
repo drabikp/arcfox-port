@@ -156,6 +156,6 @@ else
 fi
 echo
 echo "Reminder: always 'breakfast arcfox' (never a hand-written lunch target) and"
-echo "verify out/.../args-lineage_arcfox.txt says --release bp4a. Build in the"
+echo "verify out/.../args-lineage_arcfox.txt says --release cp2a (bp4a on 23.2). Build in the"
 echo "FOREGROUND -- background build tasks get reaped on this machine."
 exit "$FAILED"

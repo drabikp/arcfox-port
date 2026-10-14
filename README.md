@@ -171,8 +171,8 @@ that carry hand-applied patches — `frameworks/opt/telephony`, `packages/apps/L
 
 ```bash
 repo init -u https://github.com/LineageOS/android -b lineage-23.2 --git-lfs
-cp arcfox-port/local_manifest/manifest-20260928-pinned.xml .repo/manifests/
-repo init -m manifest-20260928-pinned.xml
+cp arcfox-port/local_manifest/manifest-20261014-pinned.xml .repo/manifests/
+repo init -m manifest-20261014-pinned.xml
 repo sync -c -j8
 ```
 

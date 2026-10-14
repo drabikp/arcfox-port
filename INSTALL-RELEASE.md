@@ -27,7 +27,7 @@ most likely reason an install goes wrong for you but not for us.
 **The package does not contain your phone's firmware.** It updates only:
 
 ```
-boot  dtbo  init_boot  vendor_boot  vbmeta
+boot  dtbo  init_boot  vendor_boot  vbmeta  vbmeta_system  recovery
 system  system_ext  product  vendor  system_dlkm  vendor_dlkm
 ```
 
@@ -90,7 +90,7 @@ saying so rather than implying a guarantee.
 |---|---|
 | **Unlocked bootloader** | Motorola issues the unlock code — see their [bootloader unlock page](https://en-us.support.motorola.com/app/standalone/bootloader/unlock-your-device-a). Unlocking **wipes the phone** and voids the warranty. Do this first and let the phone boot once. |
 | **`adb` and `fastboot`** | Android platform-tools. Tested with 36.0.2 on Linux. Distribution packages are often broken or ancient; prefer Google's official platform-tools download. |
-| **The release files** | `lineage-23.2-<date>-UNOFFICIAL-arcfox.zip` **and** `recovery.img`. The zip alone is not enough — you need the recovery image to install it. |
+| **The release files** | `lineage-23.2-<date>-UNOFFICIAL-arcfox.zip` **and** `recovery.img`. The zip alone is not enough — you need the recovery image to install it. `init_boot.img` is only for rooting with Magisk (see [Root with Magisk](#root-with-magisk)); releases before 20261014 did not include it. |
 | **A good USB cable** | Preferably the one that came with the phone, plugged directly into the computer, not through a hub. |
 | **Charge** | 50% or more. |
 | **Time** | About 15 minutes, most of it waiting. |
@@ -106,9 +106,14 @@ adb version
 
 ## Verify your download
 
+In the folder you downloaded into, with `SHA256SUMS.txt` from the same release:
+
 ```bash
-sha256sum -c lineage-23.2-<date>-UNOFFICIAL-arcfox.zip.sha256sum
+sha256sum -c --ignore-missing SHA256SUMS.txt
 ```
+
+Every file you downloaded must print `OK`. `--ignore-missing` skips the files
+you did not download, such as `init_boot.img`.
 
 A corrupted download wastes a full install cycle: recovery spends ~65 seconds
 verifying the package before it tells you the signature is bad.
@@ -177,8 +182,8 @@ on slot `a` you will boot on `b`. That is correct.
 If recovery asks *"To install additional packages, you need to reboot recovery
 first"*, that means your package installed. If you only want LineageOS, decline
 it and carry on. If you want to add a second package such as GApps, see
-[Installing GApps or other add-ons](#installing-gapps-or-other-add-ons) below —
-the order matters, because the wipe must come **after** the add-on.
+[GAPPS.md](GAPPS.md) — the order matters, because the wipe must come **after**
+the add-on.
 
 **You must now erase `/data`.** Coming from a stock install that has been booted
 even once, skipping this leaves the phone in a state where **no app can reach
@@ -262,6 +267,9 @@ Only the new ZIP is needed; the package carries its own recovery.
    to reboot recovery first"* and sideload the GApps package again — the ROM
    replaces the `product` partition it lives on. See [GAPPS.md](GAPPS.md).
 4. **Reboot system now.**
+5. If you use Magisk, the update replaced `init_boot` with an unrooted one:
+   patch the new release's `init_boot.img` and flash it as described in
+   [Root with Magisk](#root-with-magisk).
 
 ### From 20260902 — read this first
 
@@ -289,7 +297,7 @@ known to boot. Use it:
    `fastboot reboot recovery`. LineageOS recovery starts on the stock chain,
    exactly as it did when you first installed.
 5. **Advanced → Enable ADB**, `adb reboot sideload`,
-   `adb sideload lineage-23.2-20260928-UNOFFICIAL-arcfox.zip`. The package
+   `adb sideload lineage-23.2-20261014-UNOFFICIAL-arcfox.zip`. The package
    installs to the other slot — the one that held 20260902 — and this time
    writes all 13 partitions, recovery included. It also makes that slot active
    again.
@@ -313,6 +321,40 @@ wipes the phone.
 If the phone is already looping on a recovery request: from the bootloader,
 `fastboot --set-active` to the other slot and `fastboot reboot recovery`; the
 slot whose recovery starts clears the request.
+
+## Root with Magisk
+
+Each release since 20261014 includes the `init_boot.img` that is inside its zip.
+Patch **that** file, from the **same release** as the build you are running.
+
+⚠️ **Do not patch Motorola's stock `init_boot`.** It belongs to Motorola's system,
+not this one. A user who flashed a Magisk-patched stock `init_boot` over this
+build had Bluetooth audio problems that went away once they patched this
+build's own `init_boot` instead. They also had a Bluetooth developer option on
+that can cause the same symptom, so the cause is not certain, but there is no
+reason to take the risk.
+
+1. Install the Magisk app on the phone and copy `init_boot.img` to it.
+2. In Magisk: **Install → Select and Patch a File**, and pick `init_boot.img`.
+   It writes `magisk_patched-<version>_<random>.img` to `Download/`.
+3. Copy that file to the computer and flash it from the bootloader. Use the
+   bootloader, not fastbootd:
+
+   ```bash
+   adb reboot bootloader
+   fastboot flash init_boot magisk_patched-<version>_<random>.img
+   fastboot reboot
+   ```
+
+   `fastboot flash init_boot` writes the slot the phone is running from.
+4. Open Magisk once after booting; it may ask to finish its setup and reboot.
+
+**After every update** the new slot has an unrooted `init_boot` again. Patch the
+new release's `init_boot.img` and flash it the same way. To remove root, flash
+the unpatched `init_boot.img` from the release you are running.
+
+This was reported working by a user on 20260928. It has not been tested by the
+maintainer.
 
 ## The cover display and the cameras
 

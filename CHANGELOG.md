@@ -8,6 +8,123 @@ update procedures are in [INSTALL-RELEASE.md](INSTALL-RELEASE.md).
 
 ---
 
+## 20261014
+
+Fifth public release. Updating from 20260915 or newer is a normal sideload
+([INSTALL-RELEASE.md](INSTALL-RELEASE.md)); from 20260902 use the dedicated route.
+
+**Built 2026-10-14 from a clean tree** (`rm -rf out`, pinned manifest
+`manifest-20261014-pinned.xml`); SHA-256
+`214f0c600c20c55a6df0a0a5ba13bb972526c3fb33398736f03fe234e2551b53`.
+The download folder now also holds the build's own **`init_boot.img`**, for
+rooting with Magisk; see [Root with Magisk](INSTALL-RELEASE.md#root-with-magisk).
+
+### Fixed
+
+- **Cover display missing after boot, and the crash loop it caused.** Now and
+  then a boot left the cover panel on the bootloader logo. With the phone
+  closed the cover is display 0, so WindowManager refused to remove it ("Can't
+  remove the primary display") and `system_server` crashed every few seconds
+  until the phone was opened; one bugreport from the field had 49 crashes in 8
+  minutes. The bad boot that could be captured with full logs was a start-up race:
+  SurfaceFlinger processes the queued display hotplug events before its
+  scheduler exists, and an event arriving in the few milliseconds between the
+  two was queued and never processed. The field report had no start-up log, so
+  its cause is likely the same but unconfirmed. Those events are now
+  processed once the scheduler is up (`frameworks/native` fork). A test build that
+  forces the race on every boot proves the fix: the cover was missing on 3 of 3
+  boots without it and present on 5 of 5 with it.
+- **Media codec services crashing at boot.** Qualcomm's Codec2 services (the
+  audio and video codecs) crashed within the first ~16 s of roughly a third of
+  all boots, and took `mediaserver` down with them. On one boot it also reached
+  `system_server` and restarted the whole UI. Cause: the stock
+  services are Android 14 builds and allocate 264 bytes for an object that the
+  Android 16 codec library constructs at 288, so the constructor overwrote the
+  next heap block. `fix-vendor-blobs.sh` now patches one byte in each service
+  binary so that it allocates 512 bytes, checks the result by hash, and checks
+  that the built library still fits. After the fix there were no Codec2 crashes
+  in 40 reboots; before it there were 6 in 10. Crash dumps from these services
+  now work too: their sandbox used to kill the dumper.
+- **Bluetooth music silent after an audio service restart.** AOSP's and
+  Motorola's Bluetooth audio providers both registered under the same name.
+  Cold boots worked, but after any restart of the audio HAL Bluetooth rebound to
+  AOSP's provider, which the audio path does not use. Calls kept working while
+  A2DP music was silent until Bluetooth was toggled. Only Motorola's provider
+  ships now. Separately, if music over Bluetooth is silent on any build, check
+  that *Developer options → Disable Bluetooth A2DP hardware offload* is off, and
+  reboot after changing it. That option should break A2DP on stock as well:
+  neither build ships the audio configuration it needs.
+- **Screen recording on the hardware encoder.** Qualcomm's video platform
+  specification files were never extracted. Without them the hardware video
+  encoder loaded none of its input converters and rejected every frame of a
+  screen recording: the Quick Settings recorder (which uses the HEVC encoder)
+  saved no file at all. The files ship now.
+- **Sensor and keystore features declared.** The gyroscope, light, proximity,
+  step counter and step detector were in the sensor list, but the phone did not
+  declare them as system features. The same was true of dynamic head-tracker
+  support (for head-tracking headsets) and the hardware keystore (version 300).
+  The Play Store and apps that check features first treated them as missing:
+  step counters, for example. They are declared now, as on stock. Stock's files also declare a
+  barometer, which this phone does not have; this build leaves it out.
+- **Power share settings page.** The main switch was hidden under the action
+  bar (Android 16 edge-to-edge layout).
+
+### New
+
+- **Open to answer, close to end.** As on stock: opening the phone answers a
+  ringing call, closing it ends a call on the earpiece or declines a ringing one
+  (speakerphone, headset and Bluetooth calls continue), and calls answered or
+  placed on the cover display use the speakerphone. Switches:
+  *Settings → System → Gestures → Flip phone calls*. The one deliberate
+  difference from stock: closing the phone never ends an emergency call.
+  Requested on XDA.
+- **`init_boot.img` in the download folder**, for Magisk. Patch this one, not
+  Motorola's stock `init_boot`.
+
+### Verified this cycle
+
+- The installed zip, sideloaded over the previous test build with data kept,
+  then rebooted five times (six boots): no Codec2 service death and both Codec2
+  stores registered on every boot, both panels enumerated, no `system_server`
+  or audio HAL crash, Motorola's Bluetooth provider (8 A2DP offload
+  capabilities) bound every time, no tombstones. The 40-reboot Codec2 figure
+  above was measured with the same patched services on the test build.
+- Screen recording from Quick Settings (HEVC hardware encoder): 882 frames in a
+  16 s recording. The same test on the previous build saved no file at all.
+  The `screenrecord` command on the AVC encoder: 354 frames in 3 s.
+- The seven features are declared and no barometer is.
+- Payload: 391 `vendor_dlkm` and 60 `system_dlkm` modules, every vermagic
+  matching the kernel (`6.1.145-20325-g770a722b9ca7`); `recovery.img` and
+  `init_boot.img` in the download folder byte-identical to the payload's.
+- Security patch level unchanged: 2026-08-01 (platform), 2026-07-01 (vendor).
+- Not re-tested on this build: open-to-answer / close-to-end (the test phone
+  has no SIM; it was tested on real calls on 2026-10-04 with the same app), and
+  the cover-display race (proven by the forced-race test build on 2026-10-05).
+- New SELinux denial: the video codec service now reads
+  `/sys/devices/soc0/subset_parts` and is denied. Qualcomm's own policy
+  deliberately forbids that read for the service, and recording works.
+
+### Known issues
+
+- Occasionally USB comes up MTP-only after a reboot, with no adb.
+- In a few percent of boots Qualcomm's audio service crashes within its first
+  second and restarts on its own. The code is Motorola's and Qualcomm's,
+  identical to stock, and since the Bluetooth fix above the restart no longer
+  affects Bluetooth audio.
+- Apple Lossless (ALAC) files fail in apps that use Android's built-in
+  decoders; apps that bring their own decoder should be unaffected. Qualcomm's
+  ALAC decoder expects the codec data from Qualcomm's own media parser. Stock
+  ships that parser switched off on this chipset, and the official LineageOS
+  builds for recent Qualcomm phones do not ship it at all, so this build keeps
+  stock parity.
+- The cover-display start-up race above is the only cause that has been proven.
+  If the cover still stays on the logo after a boot, please send an
+  `adb bugreport` taken before rebooting. If the UI keeps restarting with the
+  phone closed, open the phone first (that stops the loop), then take it.
+- The embedded secure element (eSE1), as in 20260926.
+
+---
+
 ## 20260928
 
 Fourth public release. Updating from 20260915 or newer is a normal sideload

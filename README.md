@@ -145,13 +145,11 @@ app drawer at full size:
 git -C packages/apps/Launcher3 am arcfox-port/patches/launcher3/cover-display-camera-block-hooks.patch
 ```
 
-DeskClock needs its digital-widget series (the clock and date auto-size to
-the box the launcher gives them, so the widget is right on either panel no
-matter which one was active when it last updated):
-
-```bash
-git -C packages/apps/DeskClock am arcfox-port/patches/deskclock/digital-widget-multidisplay-sizing.patch
-```
+DeskClock's digital-widget series (the clock and date auto-size to the box the
+launcher gives them, so the widget is right on either panel no matter which one
+was active when it last updated) needs no step: the manifest syncs the
+`android_packages_apps_DeskClock` fork, which already carries it.
+`patches/deskclock/` is the same series as a patch file, for reference.
 
 The telephony framework needs the eSIM enumeration series (re-enumerate the
 embedded subscriptions when the eUICC reaches LOADED, with a bounded retry; the

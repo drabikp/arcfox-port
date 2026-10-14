@@ -97,9 +97,9 @@ rooting with Magisk; see [Root with Magisk](INSTALL-RELEASE.md#root-with-magisk)
   matching the kernel (`6.1.145-20325-g770a722b9ca7`); `recovery.img` and
   `init_boot.img` in the download folder byte-identical to the payload's.
 - Security patch level unchanged: 2026-08-01 (platform), 2026-07-01 (vendor).
-- Not re-tested on this build: open-to-answer / close-to-end (the test phone
-  has no SIM; it was tested on real calls on 2026-10-04 with the same app), and
-  the cover-display race (proven by the forced-race test build on 2026-10-05).
+- Open to answer / close to end: checked on real calls on the installed zip.
+- Not re-tested on this build: the cover-display race (proven by the
+  forced-race test build on 2026-10-05).
 - New SELinux denial: the video codec service now reads
   `/sys/devices/soc0/subset_parts` and is denied. Qualcomm's own policy
   deliberately forbids that read for the service, and recording works.

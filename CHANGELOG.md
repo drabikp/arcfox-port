@@ -1,10 +1,150 @@
 # Changelog
 
-Public builds of LineageOS 23.2 for the Motorola razr 50 ultra (arcfox).
+Public builds of LineageOS for the Motorola razr 50 ultra (arcfox): LineageOS
+24.0 (Android 17) from 20261122, LineageOS 23.2 (Android 16) before that.
 Dates are build dates; each build is a full package, installed by sideload.
 
 Checksums for every release are in the download folder, and the install and
 update procedures are in [INSTALL-RELEASE.md](INSTALL-RELEASE.md).
+
+---
+
+## 20261122 (LineageOS 24.0, Android 17)
+
+First LineageOS 24.0 release. Updating from 23.2 keeps your data; the tested
+starting point is 23.2-20261014. If you use GApps, sideload **MindTheGapps 17**
+right after the ROM, after rebooting to recovery and before the first boot.
+MindTheGapps 16's installer refuses Android 17
+([INSTALL-RELEASE.md](INSTALL-RELEASE.md#from-232-to-240),
+[GAPPS.md](GAPPS.md)). There is no way back to 23.2 without wiping the phone.
+
+**Built 2026-11-22 from a clean tree** (`rm -rf out`, compiler cache off, pinned
+manifest `manifest-20261122-pinned.xml`); SHA-256
+`f3991b24700fb2ceff0d797ac9a942c5f41b79e9d259f6de034608f7a047a02d`.
+Security patch level **2026-11-01** (platform; 20261014 had 2026-08-01). The
+vendor level stays 2026-07-01. That is the level of Motorola's vendor files
+from stock W1UXS36H.72-45-10-7, which this build ships unchanged.
+
+### New
+
+- **Android 17**, on LineageOS 24.0.
+- **Always-on display and ambient display**, on both panels. Stock sets the
+  doze configuration that turns them on; earlier builds never did, so the
+  option was missing. Requested on XDA.
+- **Adaptive brightness on both panels.** It was never available before. The
+  inner display uses the main light sensor with stock's brightness curve. The
+  main sensor sits behind the inner panel and reads almost nothing when the
+  phone is closed, so the cover uses its own light sensor, scaled the way stock
+  scales it.
+- **Display size per panel.** The cover and the inner display keep separate
+  *Display size* settings. Font size is still shared. Requested on XDA.
+- **The home screen follows auto-rotate.** Requested on XDA.
+- **IMS settings for many more carriers.** VoLTE and VoWiFi depend on
+  per-carrier settings. The build carried about 70 carriers' worth; it now
+  carries about 2,500 entries, generated from Motorola's own carrier settings.
+  This is meant for the XDA report of no VoLTE or VoWiFi on a carrier that works
+  on stock. It has not been tested with that carrier's SIM.
+
+### Fixed
+
+- **No swap.** Motorola's start-up script unloads Android's standard
+  compressed-RAM swap driver (zram) and loads Motorola's own in its place. That
+  one cannot be built for this port, so the phone ran without any swap. This
+  was measured on 24.0 test builds; 23.2 has the same configuration. The
+  standard driver is now loaded again after that point, and the phone has a
+  6 GiB compressed swap, as stock's own settings ask for.
+- **Cover double-tap to wake dead after a boot with the phone open.** The cover
+  panel turned off for the first time a moment before the gesture was armed, so
+  its touch controller powered down fully and ignored taps until the cover had
+  been switched on once. The gesture is now armed earlier in start-up.
+- **Volume keys reversed on the cover.** Folded, the volume rocker is upside
+  down; stock swaps the keys, and now this build does too. Reported on XDA.
+- **Phone app under the cameras on the cover in landscape.** The Phone app
+  ignored the side system-bar space that keeps apps clear of the camera block.
+
+Making Motorola's Android 14 vendor code run on Android 17 also took changes
+that fix nothing visible from 20261014. Each came up while porting and was
+fixed before release:
+
+- the audio HAL crashed in a loop because one audio structure grew
+  in Android 17
+- the camera provider needed a compatibility shim
+- a buffer size was raised in the IMS video-call codec (the same class of bug
+  as the Codec2 fix in 20261014)
+- two vendor daemons were killed by their sandboxes
+- vendor services died whenever a bug report or an app freeze collected stack
+  dumps, which would have cut media playback
+- light-sensor readings were lost
+- the screen kept redrawing while asleep once the always-on display existed
+
+### Verified this cycle
+
+- **The published zip, three ways:**
+  - **Clean install from Motorola's stock boot chain** with MindTheGapps 17.
+    Recovery started on Motorola's kernel, as it does for a new user. Google
+    sign-in and Play Store installs work, and there were no crashes.
+  - **Update from 23.2-20261014 with MindTheGapps 16** to this build with
+    MindTheGapps 17, without a wipe. One boot. The PIN, files, settings,
+    contacts and Wi-Fi survived. Google Play services updated from 25.15 to
+    26.11.
+  - **The regression suite,** below.
+- **The regression suite re-checked the earlier claims it covers.** Everything
+  passed apart from the known audio-service restart races (below):
+  - 5 reboots: both panels on every boot, no Codec2 service deaths, double tap
+    armed at the cover's first turn-off.
+  - 8 of 8 cameras streaming through Camera2, 3 of 3 through the old camera
+    API.
+  - Screen recording on the hardware encoder, and the speaker → microphone tone
+    loopback (70 dB signal-to-noise).
+  - Fold and unfold routing (emulated postures), and MTP, PTP and NCM tethering
+    seen from the computer.
+  - A recovery round trip.
+  - The 6 GiB swap.
+- **Steps that needed a person, all passing:** double tap to wake on both
+  panels, a real fold and unfold, fingerprint unlock, an NFC card, Bluetooth
+  music (checked by ear) and 9 minutes of off-mode charging.
+- **Telephony on the installed release** (Orange Slovakia), checked from the
+  phone's logs:
+  - Mobile data over LTE with Wi-Fi off, passing Android's connectivity check.
+  - Calls over VoLTE and over Wi-Fi calling, outgoing and incoming, all as HD
+    voice, with call audio fine both ways.
+  - SMS sent and received, both over IMS.
+- **Kernel unchanged:** the same 6.1.145 source as 20261014.
+- **Not re-tested this cycle:**
+  - VoLTE on the carriers added by the new carrier settings
+  - open to answer / close to end
+  - the eSIM fix
+  - video recording in the camera app
+  - LHDC
+  - power share
+  - face unlock
+  - whether Bluetooth music uses Motorola's audio provider. The tests only
+    showed that music plays.
+
+### Known issues
+
+- **Bluetooth restarted 5 times in 15 seconds on the first unlock after the
+  23.2 → 24.0 update** with fresh GApps. The Bluetooth stack could not parse a
+  reply from the controller about LE scan filters. The crashes stopped after
+  those 15 seconds and have not recurred after a Bluetooth restart, a reboot or
+  a clean install.
+- **Qualcomm's audio service sometimes crashes in the first seconds** after a
+  boot (1 of 6 boots in the release test) and restarts on its own about 3
+  seconds later. It is the same family of start-up races in Motorola's and
+  Qualcomm's code as on 23.2, but the cause is not proven. It happens more
+  often on 24.0: about 3 in 8 boots on the test builds, against 4 in 90 on 23.2.
+- **Charging stops around 80–95 % on a phone left plugged in for days.** After
+  every boot the phone shows *Not charging* and slowly drains, even on a strong
+  charger. Unplug for a few seconds and plug back in: it charges normally again.
+  This looks like Motorola's overcharge protection in the battery firmware,
+  which the port does not change. It has not been compared with stock yet.
+- **Auto-rotate occasionally stops responding until a reboot.** Reported on XDA
+  on 23.2; not reproduced here, cause unknown.
+- **Occasionally USB comes up MTP-only after a reboot, with no adb.** Not seen
+  in this cycle's dozen or so reboots.
+- **Apple Lossless (ALAC) files fail in apps that use Android's built-in
+  decoders.** Unchanged from 20261014; see there.
+- **No embedded secure element (eSE1),** as in 20260926.
 
 ---
 

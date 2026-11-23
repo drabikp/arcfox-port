@@ -1,14 +1,21 @@
 # Installing Google Apps on arcfox (razr 50 ultra)
 
-This is the complete procedure for putting Google Apps on the LineageOS 23.2
-build for the Motorola razr 50 ultra / razr+ 2024 (`arcfox`). It was run end to
-end on this device on 2026-09-10 with the package named below, starting from a
-freshly flashed and booted stock W1UXS36H.72-45-10-7 and following
-[INSTALL-RELEASE.md](INSTALL-RELEASE.md) and then Procedure A of this document
-exactly as written. (That test build was never published; the 20260915 release
-adds the removal of a leftover bring-up diagnostic, official USB-debugging
-semantics and the cover-display layout changes, none of which touch this
-procedure.)
+This is the complete procedure for putting Google Apps on the LineageOS builds
+for the Motorola razr 50 ultra / razr+ 2024 (`arcfox`). It is the same for 24.0
+and 23.2; only the package differs.
+
+- **24.0:** run end to end on 2026-11-23 with the published 24.0-20261122 zip
+  and MindTheGapps 17 in two ways:
+  - a clean install (Procedure A), with recovery started on Motorola's stock
+    boot chain as on a phone coming from stock;
+  - an update from 23.2-20261014 with MindTheGapps 16, keeping the data.
+
+  After the clean install, Google sign-in and a Play Store install worked.
+  After the update, the account carried over and Google Play services updated
+  itself.
+- **23.2:** run end to end on 2026-09-10 with MindTheGapps 16. It started from
+  a freshly flashed and booted stock W1UXS36H.72-45-10-7 and followed
+  [INSTALL-RELEASE.md](INSTALL-RELEASE.md), then Procedure A, exactly as written.
 
 **Requires build `lineage-23.2-20260915-UNOFFICIAL-arcfox` or later.** Earlier
 builds cannot take GApps at all — see [If you are on the 20260902 build](#if-you-are-on-the-20260902-build).
@@ -17,20 +24,21 @@ builds cannot take GApps at all — see [If you are on the 20260902 build](#if-y
 
 ## The package
 
-The [LineageOS wiki](https://wiki.lineageos.org/gapps) names one package for
-LineageOS 23 (Android 16), and it is the only one that has been tested here:
+The [LineageOS wiki](https://wiki.lineageos.org/gapps) names MindTheGapps for
+each LineageOS version. It is the only package tested here, and the version
+must match the ROM's Android version:
 
-| | |
-|---|---|
-| Package | **MindTheGapps 16.0.0 arm64** |
-| Download | <https://github.com/MindTheGapps/16.0.0-arm64/releases/latest> |
-| Tested build | `MindTheGapps-16.0.0-arm64-20260828_065733.zip` |
-| Needs | about 1.1 GB free in `product` — the 20260915 build reserves 1.9 GB |
+| | LineageOS 24.0 (Android 17) | LineageOS 23.2 (Android 16) |
+|---|---|---|
+| Package | **MindTheGapps 17.0.0 arm64** | **MindTheGapps 16.0.0 arm64** |
+| Download | <https://github.com/MindTheGapps/17.0.0-arm64/releases/latest> | <https://github.com/MindTheGapps/16.0.0-arm64/releases/latest> |
+| Tested build | `MindTheGapps-17.0.0-arm64-20261022_132445.zip` | `MindTheGapps-16.0.0-arm64-20260828_065733.zip` |
+| Space | fits; `product` still had 1.1 GB free with it installed | about 1.1 GB needed in `product`; the 20260915 build reserves 1.9 GB |
 
 Download the `.zip` and its `.sha256sum`, then check it:
 
 ```bash
-sha256sum -c MindTheGapps-16.0.0-arm64-*.zip.sha256sum
+sha256sum -c MindTheGapps-17.0.0-arm64-*.zip.sha256sum
 ```
 
 Do not take the `-ATV` variant; that is for Android TV.
@@ -96,12 +104,16 @@ On the phone: *Advanced → Enable ADB*. Then:
 
 ```bash
 adb reboot sideload
-adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip
+adb sideload lineage-24.0-<date>-UNOFFICIAL-arcfox.zip
 ```
 
 Expect about a minute of nothing while the signature is checked, then progress,
 then a few minutes of installing. `Total xfer: 1.00x` on the computer means the
 file was sent; the phone's screen shows the install result.
+
+The `adb sideload` command on the computer does not return until you answer
+the question in step 3 on the phone. If the screen has turned off (after about
+4 minutes), press the power key to see it.
 
 ### 3. Reboot to the new slot's recovery
 
@@ -122,7 +134,7 @@ On the phone again: *Advanced → Enable ADB*. Then:
 
 ```bash
 adb reboot sideload
-adb sideload MindTheGapps-16.0.0-arm64-<date>.zip
+adb sideload MindTheGapps-17.0.0-arm64-<date>.zip
 ```
 
 Recovery will say **"Signature verification failed"** and ask whether to
@@ -152,7 +164,7 @@ booted. Your data will be wiped; back it up first.
 1. From the running system: `adb reboot recovery`
    (or hold Volume Down + Power from power-off, then `fastboot reboot recovery`).
 2. *Advanced → Enable ADB*, then `adb reboot sideload` and
-   `adb sideload MindTheGapps-16.0.0-arm64-<date>.zip`.
+   `adb sideload MindTheGapps-17.0.0-arm64-<date>.zip`.
    Choose **yes** at "Signature verification failed".
 3. *Factory Reset → Format Data/Factory Reset → Format Data*, confirm.
 4. *Reboot system now.*
@@ -188,10 +200,12 @@ fastboot reboot recovery               # starts the recovery you flashed at inst
 ```
 
 From that recovery follow [Procedure A](#procedure-a--fresh-install-from-stock-or-wiping-anyway)
-from step 2 with the **20260915 or later** ROM zip. It lands on the slot you
-came from, replaces its boot chain and recovery, and the "reboot to recovery"
-prompt then works. Your data survives the ROM update; the wipe in step 5 is
-still required for GApps.
+from step 2 with the **23.2-20261014** ROM zip and **MindTheGapps 16**. Use a 23.2
+build here, not 24.0: this escape route was only ever tested with 23.2. The zip lands on the
+slot you came from, replaces its boot chain and recovery, and the "reboot to
+recovery" prompt then works. The wipe in step 5 is required for GApps. Once that
+23.2 install has booted, update to 24.0 as in
+[INSTALL-RELEASE.md](INSTALL-RELEASE.md#from-232-to-240).
 
 ---
 
@@ -217,6 +231,9 @@ browser in place.
 slot it installs to, which is where GApps live. After sideloading a new ROM,
 answer yes to the "reboot recovery" prompt and sideload GApps again before
 booting. No wipe is needed for an update: your data and accounts stay.
+Updating from 23.2 to 24.0, the GApps you sideload at that point must be
+**MindTheGapps 17**, not 16; see
+[INSTALL-RELEASE.md](INSTALL-RELEASE.md#from-232-to-240).
 
 ---
 
@@ -227,6 +244,7 @@ booting. No wipe is needed for an update: your data and accounts stay.
 | `adb devices` says `unauthorized` in recovery | ADB is off. *Advanced → Enable ADB* on the phone. It resets after every sideload. |
 | `adb: error: closed` in the system after a wipe | The computer's key was wiped too. Accept the USB-debugging prompt on the phone. |
 | *Signature verification failed* | Normal for MindTheGapps. Choose yes. |
+| *This package is for Android 16.0.0 (SDK 36) but your system is Android 17 …! Aborting* | Wrong package for 24.0. Do not boot yet: sideload MindTheGapps 17 instead. |
 | *Not enough space for GApps! Aborting* | You are on a build older than 20260915. Its images ship 100% full. Update the ROM first. |
 | Phone restarts endlessly after "reboot to recovery", nothing on USB | You are on the 20260902 build. See [above](#if-you-are-on-the-20260902-build). |
 | *Error in /sideload/package.zip (status 1)* with no other text | The installer aborted before printing. Almost always the space case above. |

@@ -1,7 +1,10 @@
-# arcfox — LineageOS 23.2 for the Motorola razr 50 ultra
+# arcfox — LineageOS 24.0 for the Motorola razr 50 ultra
 
-An unofficial LineageOS 23.2 (Android 16) port for **arcfox** — Motorola razr 50
+An unofficial LineageOS 24.0 (Android 17) port for **arcfox** — Motorola razr 50
 ultra / razr+ 2024, SM8635 (Snapdragon 8s Gen 3).
+
+This branch (`lineage-24.0`) is the 24.0 port. The LineageOS 23.2 (Android 16)
+port, up to release 20261014, is on `master` and `lineage-23.2`.
 
 This repository holds the parts of the port that are not source trees: the
 `repo` local manifest that assembles the tree, the scripts that build the kernel
@@ -22,12 +25,39 @@ Verified on a flashed build, cold-booted:
 | | |
 |---|---|
 | Telephony | VoLTE (calls stay on IMS, no SRVCC), VoWiFi, mobile data, SMS, emergency calling |
-| Display | both panels (inner 1080x2640 + cover), posture-driven routing, wake on open, fold behaviour setting (Always / Swipe up / Never), 120 Hz by default and up to 165 Hz (Settings → Display → Peak refresh rate), 24 Hz when idle |
+| Display | both panels (inner 1080x2640 + cover), posture-driven routing, wake on open, fold behaviour setting (Always / Swipe up / Never), 120 Hz by default and up to 165 Hz (Settings → Display → Peak refresh rate), 24 Hz when idle, always-on display on both panels, adaptive brightness on both panels (the cover uses its own light sensor), a separate Display size for each panel |
 | Input | both touchscreens, double-tap-to-wake on each |
 | Camera | 3 cameras, API1 and API2, video recording |
-| Sensors | 79 sensors, all fold postures commit |
+| Sensors | 76 sensors, all fold postures commit |
 | Power | reverse wireless charging (power share) |
 | Other | WiFi, Bluetooth (incl. LHDC v5), NFC, fingerprint, face unlock (class 1) |
+
+The table was verified on 23.2. The 24.0-20261122 release re-measured:
+
+- both panels and their refresh modes
+- wake on open, with folding emulated by the test suite and once by hand
+- double tap to wake on each panel
+- all cameras streaming
+- the sensor list
+- WiFi, Bluetooth music, NFC and fingerprint
+- on Orange Slovakia:
+  - VoLTE and Wi-Fi calling, both directions
+  - SMS both ways
+  - mobile data
+- the always-on display
+- adaptive brightness set up on both panels (checked in the configuration, not
+  re-tested by hand)
+
+Not re-tested on 24.0:
+
+- emergency calling
+- the per-panel Display size, after its last change
+- camera video recording
+- LHDC
+- power share
+- face unlock
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 **Known gap versus stock**, root-caused in `docs/HANDOFF-NEXT.md` §0.38:
 **thermal profile switching does not happen.**
@@ -103,18 +133,19 @@ Tested on Arch/Manjaro with 16 GB+ RAM and ~400 GB free.
 
 ```bash
 mkdir -p ~/android/arcfox && cd ~/android/arcfox
-repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
+repo init -u https://github.com/LineageOS/android.git -b lineage-24.0 --git-lfs
 mkdir -p .repo/local_manifests
 
-git clone https://github.com/drabikp/arcfox-port.git
+git clone -b lineage-24.0 https://github.com/drabikp/arcfox-port.git
 cp arcfox-port/local_manifest/arcfox.xml .repo/local_manifests/
 
 repo sync -c -j8
 ```
 
-`local_manifest/arcfox.xml` replaces nine LineageOS/AOSP projects with forks
-carrying the arcfox changes, and adds the device, kernel and techpack trees.
-Each fork's branch holds only the arcfox commits on top of upstream.
+`local_manifest/arcfox.xml` replaces 15 LineageOS/AOSP projects with forks
+carrying the arcfox changes (branch `arcfox-24.0` in each), and adds the device,
+kernel and techpack trees. Each fork's branch holds only the arcfox commits on
+top of upstream.
 
 ### 2. Assemble the kernel module tree
 
@@ -137,45 +168,42 @@ The root `Android.mk` is deliberately empty — it stops `kati` descending into
 the techpack DLKM wrappers, which are built out of tree by
 `vendor/lineage/build/tasks/kernel.mk`.
 
-One platform patch is carried the same way. Launcher3 needs the device hooks
-that keep the cover display's keyboard and dock above the camera block and its
-app drawer at full size:
+No platform patch needs applying by hand on 24.0. The forks the manifest syncs
+already carry the following:
 
-```bash
-git -C packages/apps/Launcher3 am arcfox-port/patches/launcher3/cover-display-camera-block-hooks.patch
-```
+- **Launcher3:** the device hooks that keep the cover display's keyboard and
+  dock above the camera block and its app drawer at full size.
+- **DeskClock:** the digital-widget series. The clock and date auto-size to the
+  box the launcher gives them, so the widget is right on either panel no matter
+  which one was active when it last updated.
+- **Telephony framework:** the eSIM enumeration safety net. It re-enumerates
+  the embedded subscriptions when the eUICC reaches LOADED, with a bounded
+  retry; the wedge itself is fixed in the device tree.
 
-DeskClock's digital-widget series (the clock and date auto-size to the box the
-launcher gives them, so the widget is right on either panel no matter which one
-was active when it last updated) needs no step: the manifest syncs the
-`android_packages_apps_DeskClock` fork, which already carries it.
-`patches/deskclock/` is the same series as a patch file, for reference.
-
-The telephony framework needs the eSIM enumeration series (re-enumerate the
-embedded subscriptions when the eUICC reaches LOADED, with a bounded retry; the
-wedge itself is fixed in the device tree, this is the safety net):
-
-```bash
-git -C frameworks/opt/telephony am arcfox-port/patches/telephony/*.patch
-```
+`patches/launcher3/`, `patches/deskclock/` and `patches/telephony/` are the 23.2
+versions of these series, kept for reference. On 23.2, Launcher3 and telephony
+took them with `git am`; see the README on `master`.
 
 ### Reproducing a release exactly
 
-`local_manifest/arcfox.xml` floats on `lineage-23.2`, so a fresh sync picks up
+`local_manifest/arcfox.xml` floats on `lineage-24.0`, so a fresh sync picks up
 whatever LineageOS has merged since. To rebuild the tree a release came from,
-use its pinned manifest (every project at the exact commit; the two projects
-that carry hand-applied patches — `frameworks/opt/telephony`, `packages/apps/Launcher3`
-— are pinned to their upstream base and get the patches from `patches/` as above):
+use its pinned manifest, which puts every project, forks included, at the
+exact commit:
 
 ```bash
-repo init -u https://github.com/LineageOS/android -b lineage-23.2 --git-lfs
-cp arcfox-port/local_manifest/manifest-20261014-pinned.xml .repo/manifests/
-repo init -m manifest-20261014-pinned.xml
+repo init -u https://github.com/LineageOS/android -b lineage-24.0 --git-lfs
+rm -f .repo/local_manifests/arcfox.xml     # the pinned manifest already contains these projects
+cp arcfox-port/local_manifest/manifest-20261122-pinned.xml .repo/manifests/
+repo init -m manifest-20261122-pinned.xml
 repo sync -c -j8
 ```
 
-Then continue with the kernel-tree assembly, the patches, the firmware
-extraction and `fix-vendor-blobs.sh` exactly as below. Images will not be
+The 23.2 releases' pinned manifests (`manifest-20261014-pinned.xml` and
+earlier) go with `-b lineage-23.2` and the 23.2 instructions on `master`.
+
+Then continue with the kernel-tree assembly, the firmware extraction and
+`fix-vendor-blobs.sh` exactly as below. Images will not be
 bit-identical (build date, module signatures, AVB salts and the kernel git hash
 are embedded) but carry the same sources: a from-scratch rebuild of 20260926
 matched 9576 of 10470 packaged files byte-for-byte, with every difference
@@ -224,7 +252,9 @@ Use `breakfast`, never a hand-written `lunch` target — a guessed
 overrides and ships a year-stale security patch string. `breakfast` resolves
 the correct release config (`cp2a` on 24.0, `bp4a` on 23.2).
 
-Output: `out/target/product/arcfox/lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
+Output: `out/target/product/arcfox/lineage-24.0-<date>-UNOFFICIAL-arcfox.zip`.
+It is a hard link that the next build rewrites in place, so copy it somewhere
+else before building again.
 
 ---
 
@@ -235,7 +265,7 @@ Output: `out/target/product/arcfox/lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`.
 - **Installing what you just built, or returning to stock?** →
   [INSTALL.md](INSTALL.md)
 - **Want the rules and the reasoning?** → [FLASHING.md](FLASHING.md)
-- **Google Apps?** → [GAPPS.md](GAPPS.md) — tested with MindTheGapps 16 on build 20260915
+- **Google Apps?** → [GAPPS.md](GAPPS.md). Tested with MindTheGapps 17 on 24.0-20261122 and MindTheGapps 16 on 23.2.
 
 ⚠️ The install has only been tested onto stock **W1UXS36H.72-45-10-7**. The
 package writes 13 partitions and none of them are firmware — the modem,
@@ -258,7 +288,7 @@ Two rules that cost real time here:
 |---|---|
 | `local_manifest/arcfox.xml` | the `repo` manifest that assembles the whole tree |
 | `scripts/` | kernel assembly, firmware extraction, blob resolution, build and boot-test helpers |
-| `patches/` | out-of-tree patches for display-drivers, wlan, camera-kernel, Launcher3 (cover-display camera block: keyboard and dock kept above the cameras in portrait, camera-side strip reserved in landscape, app drawer kept at full size) and DeskClock (clock widget auto-sizes to its box on either panel) |
+| `patches/` | out-of-tree patches for display-drivers, wlan and camera-kernel. Also the 23.2 platform series for Launcher3, DeskClock and telephony, which the 24.0 forks carry; they are kept for reference. |
 | `kernel-modules-root/` | the `Android.bp`/`Android.mk` stubs for `sm8635-modules/` |
 | `INSTALL-RELEASE.md` | installing a downloaded build (start here as a user) |
 | `CHANGELOG.md` | what changed in each public build |

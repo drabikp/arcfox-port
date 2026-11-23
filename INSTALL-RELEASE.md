@@ -90,7 +90,7 @@ saying so rather than implying a guarantee.
 |---|---|
 | **Unlocked bootloader** | Motorola issues the unlock code — see their [bootloader unlock page](https://en-us.support.motorola.com/app/standalone/bootloader/unlock-your-device-a). Unlocking **wipes the phone** and voids the warranty. Do this first and let the phone boot once. |
 | **`adb` and `fastboot`** | Android platform-tools. Tested with 36.0.2 on Linux. Distribution packages are often broken or ancient; prefer Google's official platform-tools download. |
-| **The release files** | `lineage-23.2-<date>-UNOFFICIAL-arcfox.zip` **and** `recovery.img`. The zip alone is not enough — you need the recovery image to install it. `init_boot.img` is only for rooting with Magisk (see [Root with Magisk](#root-with-magisk)); releases before 20261014 did not include it. |
+| **The release files** | `lineage-24.0-<date>-UNOFFICIAL-arcfox.zip` **and** `recovery.img`, both from the same release. The zip alone is not enough — you need the recovery image to install it. `init_boot.img` is only for rooting with Magisk (see [Root with Magisk](#root-with-magisk)); releases before 20261014 did not include it. 23.2 releases are named `lineage-23.2-…` and the steps are the same. |
 | **A good USB cable** | Preferably the one that came with the phone, plugged directly into the computer, not through a hub. |
 | **Charge** | 50% or more. |
 | **Time** | About 15 minutes, most of it waiting. |
@@ -168,11 +168,18 @@ again later.
 
 ```bash
 adb reboot sideload
-adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip
+adb sideload lineage-24.0-<date>-UNOFFICIAL-arcfox.zip
 ```
 
 Expect **~65 seconds of nothing** while the signature is verified, then progress,
 then a few minutes of installing. `Total xfer: 1.00x` means the file was sent.
+
+⚠️ **Watch the phone, not the computer.** When the install finishes, recovery
+asks on screen whether to reboot recovery (step 5), and the `adb sideload`
+command on the computer **does not return until you answer**. It can look frozen
+for as long as you leave it: in testing it sat there for a whole night. The
+phone's screen turns off after about 4 minutes; press the power key to see the
+question again.
 
 The phone installs onto the *other* slot and switches to it, so if you started
 on slot `a` you will boot on `b`. That is correct.
@@ -260,16 +267,41 @@ Only the new ZIP is needed; the package carries its own recovery.
 
 1. `adb reboot recovery`.
 2. **Advanced → Enable ADB**, then `adb reboot sideload` and
-   `adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip`. After
+   `adb sideload lineage-24.0-<date>-UNOFFICIAL-arcfox.zip`. After
    `adb reboot sideload` the recovery restarts and takes up to half a minute
    to show as `sideload` in `adb devices`; run `adb sideload` once it does.
+   As in a fresh install, the command returns only after you answer the
+   question in the next step on the phone.
 3. If you use GApps, answer **yes** to *"To install additional packages, you need
-   to reboot recovery first"* and sideload the GApps package again — the ROM
+   to reboot recovery first"*. Then **Advanced → Enable ADB** again,
+   `adb reboot sideload` and sideload the GApps package again: the ROM
    replaces the `product` partition it lives on. See [GAPPS.md](GAPPS.md).
+   Without GApps, answer no.
 4. **Reboot system now.**
 5. If you use Magisk, the update replaced `init_boot` with an unrooted one:
    patch the new release's `init_boot.img` and flash it as described in
    [Root with Magisk](#root-with-magisk).
+
+### From 23.2 to 24.0
+
+This is the route above with two differences:
+
+- **GApps must be MindTheGapps 17** (Android 17), not the MindTheGapps 16 you
+  installed on 23.2. Sideload it in step 3, before the first boot of 24.0; that
+  order is the one that was tested. MindTheGapps 16 is built for Android 16 and
+  does not belong on 24.0.
+- **There is no way back without a wipe.** The first boot upgrades your data to
+  Android 17, and Android 16 cannot read it. Going back to 23.2 means a fresh
+  install, including the wipe. Recovery also refuses a package older than
+  itself, so a 23.2 zip needs the 23.2 `recovery.img` flashed first.
+
+Tested end to end on 2026-11-23 with the published files: 23.2-20261014 with
+MindTheGapps 16 on one slot, updated from its own recovery to 24.0-20261122 with
+MindTheGapps 17. The phone booted once, straight into 24.0. The screen PIN
+unlocked the data and files, settings, contacts and Wi-Fi were all there.
+Google Play services updated itself from 25.15 to 26.11. On that first unlock
+Bluetooth restarted a few times by itself and then settled; see
+[CHANGELOG.md](CHANGELOG.md).
 
 ### From 20260902 — read this first
 
@@ -292,7 +324,8 @@ known to boot. Use it:
    `b`). The other letter is the stock slot.
 3. Switch to it: `fastboot --set-active=a` or `fastboot --set-active=b`
    (the letter you are **not** running from).
-4. `fastboot flash recovery recovery.img` with the **new** `recovery.img` —
+4. `fastboot flash recovery recovery.img` with the `recovery.img` **from
+   23.2-20261014** (see the note at the end of this section) —
    `fastboot` resolves `recovery` to the now-active slot. Then
    `fastboot reboot recovery`. LineageOS recovery starts on the stock chain,
    exactly as it did when you first installed.
@@ -321,6 +354,12 @@ wipes the phone.
 If the phone is already looping on a recovery request: from the bootloader,
 `fastboot --set-active` to the other slot and `fastboot reboot recovery`; the
 slot whose recovery starts clears the request.
+
+This route was tested on 2026-09-17 with a 23.2 build, never straight to 24.0.
+On 20260902, take it to **23.2-20261014** with that release's `recovery.img`
+(in steps 4 and 5). The 24.0 recovery refuses the older 23.2 package. Boot
+23.2-20261014 once, then update to 24.0 as described
+[above](#from-232-to-240).
 
 ## Root with Magisk
 
@@ -398,7 +437,7 @@ USB debugging (Settings → About phone → tap **Build number** seven times →
 Developer options → USB debugging):
 
 ```bash
-adb -s <serial> shell getprop ro.lineage.version    # 23.2-<date>-UNOFFICIAL-arcfox
+adb -s <serial> shell getprop ro.lineage.version    # 24.0-<date>-UNOFFICIAL-arcfox
 adb -s <serial> shell getprop ro.boot.slot_suffix   # the other slot from where you started
 ```
 

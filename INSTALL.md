@@ -21,7 +21,7 @@ each exists. This file is the procedure itself.
 |---|---|
 | An **unlocked bootloader** | Motorola issues the unlock code — see their official [bootloader unlock page](https://en-us.support.motorola.com/app/standalone/bootloader/unlock-your-device-a). Unlocking itself wipes the device and voids the warranty. |
 | `fastboot` | From Android platform-tools. Anything reasonably recent works; these steps were run with 36.0.2. |
-| The LineageOS package | `lineage-23.2-<date>-UNOFFICIAL-arcfox.zip` plus the raw images, or a tree you built yourself (see [README.md](README.md)). |
+| The LineageOS package | `lineage-24.0-<date>-UNOFFICIAL-arcfox.zip` plus the raw images, or a tree you built yourself (see [README.md](README.md)). |
 | A stock firmware package | Only needed to go *back* to stock. Motorola's Rescue and Smart Assistant downloads one and leaves it under `ProgramData/RSA/Download/RomFiles/`. |
 | A good USB cable | Flashing `super` moves ~5 GB. A marginal cable or hub shows up as `error -71`/`-32` in the host's `dmesg` and aborts a flash mid-write. |
 
@@ -129,7 +129,7 @@ expect to set it again between steps.
 ```bash
 # 4. switch recovery into sideload mode, then send the package
 adb reboot sideload
-adb sideload lineage-23.2-<date>-UNOFFICIAL-arcfox.zip
+adb sideload lineage-24.0-<date>-UNOFFICIAL-arcfox.zip
 
 # 5. reboot
 adb reboot

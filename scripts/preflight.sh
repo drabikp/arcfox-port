@@ -122,29 +122,39 @@ else
   block "git user.name / user.email unset; repo init refuses to proceed without them"
 fi
 
-# --- Vendor blob fixups -----------------------------------------------------
-# extract-files.py regenerates vendor/motorola/ FROM SCRATCH, and that directory
-# is not a git repo, so every hand fix in it is destroyed with no diff to warn
-# you. fix-vendor-blobs.sh reapplies them; --check verifies them and changes
-# nothing. This matters here because a tree that fails the check still BUILDS
-# CLEANLY and only misbehaves on the device -- no wlan0, unlinked telephony
-# libraries, no inbound SMS -- which is the most expensive place to find it.
+# --- Vendor blobs -------------------------------------------------------------
+# extract-files.py regenerates vendor/motorola/ from scratch and applies every
+# blob fix itself. A tree extracted by an older device tree (before the fixes
+# moved into extract-files.py) still BUILDS CLEANLY and only misbehaves on the
+# device, so check one fixed file: the pinned Codec2 service must carry its
+# fixup hash from proprietary-files.txt.
 echo
 echo "Vendor tree"
-FVB="$BUILD_DIR/device/motorola/sm8635-common/fix-vendor-blobs.sh"
+PFT="$BUILD_DIR/device/motorola/sm8635-common/proprietary-files.txt"
 VND="$BUILD_DIR/vendor/motorola/sm8635-common"
-if [ ! -f "$FVB" ]; then
-  warn "fix-vendor-blobs.sh not found under $BUILD_DIR (device tree not synced yet?)"
+C2="vendor/bin/hw/vendor.qti.media.c2audio@1.0-service"
+if [ ! -f "$PFT" ]; then
+  warn "sm8635-common not found under $BUILD_DIR (device tree not synced yet?)"
 elif [ ! -f "$VND/Android.bp" ]; then
-  block "vendor/motorola/sm8635-common has no Android.bp; run, in this order:
-          device/motorola/sm8635-common/extract-files.py
-          device/motorola/sm8635-common/setup-makefiles.py
-          device/motorola/sm8635-common/fix-vendor-blobs.sh"
-elif FVB_OUT=$(bash "$FVB" --check 2>&1); then
-  pass "vendor blob fixups applied"
+  block "vendor/motorola/sm8635-common has no Android.bp; run extract-files.py in
+          device/motorola/sm8635-common and device/motorola/arcfox"
+elif [ -f "$(dirname "$PFT")/fix-vendor-blobs.sh" ]; then
+  # Trees up to release 20261122 fix the blobs with a script after extraction.
+  if FVB_OUT=$(bash "$(dirname "$PFT")/fix-vendor-blobs.sh" --check 2>&1); then
+    pass "vendor blob fixups applied (fix-vendor-blobs.sh --check)"
+  else
+    block "vendor blob fixups MISSING; run device/motorola/sm8635-common/fix-vendor-blobs.sh"
+    printf '%s\n' "$FVB_OUT" | sed 's/^/          /'
+  fi
 else
-  block "vendor blob fixups MISSING; run $FVB"
-  printf '%s\n' "$FVB_OUT" | sed 's/^/          /'
+  WANT=$(grep -m1 "^$C2|" "$PFT" | cut -d'|' -f3)
+  HAVE=$(sha1sum "$VND/proprietary/$C2" 2>/dev/null | cut -d' ' -f1)
+  if [ -n "$WANT" ] && [ "$HAVE" = "$WANT" ]; then
+    pass "vendor blob fixups applied (c2audio carries its fixup hash)"
+  else
+    block "vendor blob fixups MISSING ($C2 sha1 ${HAVE:-absent}, want $WANT);
+          re-run device/motorola/sm8635-common/extract-files.py"
+  fi
 fi
 
 # --- Summary ----------------------------------------------------------------

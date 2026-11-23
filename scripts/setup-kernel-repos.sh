@@ -3,8 +3,8 @@
 #
 # WHY THIS FILE EXISTS
 # Nothing hand-placed under kernel/ may live only on disk. Everything here is
-# reproducible from a URL + tag, in the same spirit as fix-vendor-blobs.sh --
-# see memory `re-extract-destroys-vendor-edits`. If you hand-edit a kernel repo,
+# reproducible from a URL + tag, in the same spirit as the blob fixes living in
+# extract-files.py rather than in vendor/. If you hand-edit a kernel repo,
 # the edit belongs in this script or in a patch series next to it, NOT loose in
 # a working tree that `repo sync` will silently flatten.
 #

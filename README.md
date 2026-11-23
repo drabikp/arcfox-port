@@ -202,8 +202,11 @@ repo sync -c -j8
 The 23.2 releases' pinned manifests (`manifest-20261014-pinned.xml` and
 earlier) go with `-b lineage-23.2` and the 23.2 instructions on `master`.
 
-Then continue with the kernel-tree assembly, the firmware extraction and
-`fix-vendor-blobs.sh` exactly as below. Images will not be
+Then continue with the kernel-tree assembly and the firmware and blob
+extraction exactly as below. Releases up to and including 20261122 also need
+`device/motorola/sm8635-common/fix-vendor-blobs.sh` run after extraction (their
+pinned trees contain it). Later trees apply those fixes in `extract-files.py`
+itself. Images will not be
 bit-identical (build date, module signatures, AVB salts and the kernel git hash
 are embedded) but carry the same sources: a from-scratch rebuild of 20260926
 matched 9576 of 10470 packaged files byte-for-byte, with every difference
@@ -232,12 +235,18 @@ Needs `android-tools` (simg2img, lpunpack) and `erofs-utils` (fsck.erofs).
 ```bash
 cd device/motorola/sm8635-common && ./extract-files.py ~/android/firmware/W1UXS36H/extracted
 cd ../arcfox                     && ./extract-files.py ~/android/firmware/W1UXS36H/extracted
-cd ../sm8635-common              && ./fix-vendor-blobs.sh
 ```
 
-`fix-vendor-blobs.sh` is not optional and must be re-run after every
-extraction: `extract-files.py` rewrites `vendor/motorola/` from scratch, so
-every manual blob fix lives in that script rather than loose in the tree.
+`extract-files.py` rewrites `vendor/motorola/` from scratch and applies every
+blob fix itself (in `sm8635-common/extract-files.py`; the binary patches are
+pinned by hash in `proprietary-files.txt`). Extracting from the stock firmware
+reproduces the vendor tree release 20261122 was built from, byte for byte (that
+release still applied the fixes with a separate `fix-vendor-blobs.sh`). Never
+edit `vendor/motorola/` by hand: the next extraction silently undoes it.
+
+After a build, `arcfox-port/scripts/check-codec2-store-size.py` (run from the
+Android top) confirms the Codec2 allocation fix still covers the platform's
+ComponentStore.
 
 ### 5. Build
 

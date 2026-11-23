@@ -1,0 +1,59 @@
+# DRAFT of the LineageOS wiki device entry (_data/devices/arcfox.yml in
+# LineageOS/lineage_wiki), modelled on rtwo_variant1.yml. Only needed if arcfox
+# becomes an official device; kept here so the facts live in one place.
+#
+# Read from the phone (24.0-20261122): model, SKU XT2451-3, CPU clusters
+# 3x 2.02 + 4x 2.80 + 1x 3.01 GHz, 12 GB RAM (MemTotal 11.1 GiB), battery design
+# capacity 4000 mAh, displays 1080x2640 and 1080x1272 at up to 165 Hz,
+# 1 back + 1 front logical camera pair with two physical back and one front.
+# VERIFY before submitting (from public spec sheets, not measured): camera
+# megapixels, dimensions, release month, other model numbers, Bluetooth and
+# Wi-Fi standards, storage options.
+#
+# Firmware: the package ships no firmware (ships_fw: false). The Device Support
+# Requirements then require both slots on known good firmware, which is the
+# ab_copy_partitions template; INSTALL-RELEASE.md asks for stock
+# W1UXS36H.72-45-10-7 on both slots.
+architecture: arm64
+battery: {capacity: 4000, removable: false, tech: 'Li-Ion'}
+before_install: {instructions: 'needs_specific_android_fw', ships_fw: false, version: '16'}
+before_lineage_install: ab_copy_partitions
+before_recovery_install: {instructions: 'boot_stack', partitions: [boot, dtbo, init_boot, vendor_boot]}
+bluetooth: {profiles: [A2DP + aptX HD, LHDC], spec: '5.4'}  # VERIFY spec
+cameras:  # VERIFY megapixels
+  - {flash: 'LED', info: '50 MP (Primary)'}
+  - {flash: 'LED', info: '50 MP (Telephoto, 2x)'}
+  - {flash: None, info: '32 MP (Front Facing)'}
+codename: arcfox
+cpu: Kryo
+cpu_cores: '8'
+cpu_freq: 1 x 3.01 GHz + 4 x 2.80 GHz + 3 x 2.02 GHz
+current_branch: 24.0
+dimensions: {depth: 7.09, height: 171.42, width: 73.99}  # VERIFY (unfolded, mm)
+download_boot: With the device powered off, hold <kbd>Volume Down</kbd> + <kbd>Power</kbd>.
+gpu: Qualcomm Adreno 735
+image: arcfox.png
+install_method: fastboot_motorola
+is_ab_device: true
+kernel: {repo: android_kernel_motorola_sm8635, version: '6.1'}
+maintainers: []
+models: [XT2451-3]  # VERIFY other SKUs (razr+ 2024 is the same hardware)
+name: razr 50 ultra / razr+ 2024
+network: [2G GSM, 3G UMTS, 4G LTE, 5G NR]
+peripherals: [A-GPS, Accelerometer, Compass, Dual SIM, eSIM, Fingerprint reader, BeiDou, Galileo, GLONASS, GPS, QZSS, Gyroscope, Hinge angle sensor, Light sensor, NFC, Pedometer, Proximity sensor, Stereo speakers, USB OTG]
+ram: 12 GB LPDDR5X
+recovery_boot: With the device powered off, hold <kbd>Volume Down</kbd> + <kbd>Power</kbd>, then select "Recovery mode" using Volume keys.
+recovery_partition_name: recovery
+recovery_reboot: fastboot_menu
+release: 2024-06  # VERIFY
+screen:  # format as in felix.yml / comet.yml
+- Cover: {refresh_rate: 165, resolution: '1080x1272', size: 4.0, technology: 'pOLED'}
+- Inner: {refresh_rate: 165, resolution: '1080x2640', size: 6.9, technology: 'Foldable pOLED'}
+soc: Qualcomm SM8635 Snapdragon 8s Gen 3
+storage: 256/512 GB UFS 4.0  # VERIFY
+tree: android_device_motorola_arcfox
+type: phone
+vendor: Motorola
+vendor_short: motorola
+versions: [24.0]
+wifi: 802.11 a/b/g/n/ac/ax/be  # VERIFY

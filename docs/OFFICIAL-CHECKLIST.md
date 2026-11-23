@@ -1,7 +1,9 @@
 # arcfox against the LineageOS Device Support Requirements
 
-Walked on 2026-09-15 against the current charter
-(`LineageOS/charter/device-support-requirements.md`) on build 20260915 (build 16).
+First walked on 2026-09-15 against the charter
+(`LineageOS/charter/device-support-requirements.md`) on build 20260915. Updated on
+2026-11-23 for LineageOS 24.0 (release 24.0-20261122), including the charter's
+newer `ai-coding-assistants.md`.
 Status words: **met**, **gap**, **untested**, **n/a** (no such hardware or feature on stock),
 **verify** (evidence suggests met but not proven).
 
@@ -9,29 +11,31 @@ Status words: **met**, **gap**, **untested**, **n/a** (no such hardware or featu
 
 | Requirement | Level | Status | Evidence / note |
 |---|---|---|---|
-| Media playback, in-call audio, speaker | MUST | met | daily use; VoLTE/VoWiFi calls verified |
+| Media playback, in-call audio, speaker | MUST | met | 24.0: speaker→mic loopback in the regression suite, calls with audio both ways |
 | Extra audio configuration (echo cancel, extra mics) | SHOULD | verify | stock audio HAL and configs shipped; not measured |
-| Other outputs supported by stock (USB-C, BT; no jack) | MUST | met | audio policy lists USB_HEADSET, USB_DEVICE, A2DP |
+| Other outputs supported by stock (USB-C, BT; no jack) | MUST | met | audio policy lists USB_HEADSET, USB_DEVICE, A2DP; A2DP offload verified on 24.0 |
 | FM radio | SHOULD | n/a | no FM on stock |
-| RIL calls and data; emergency call with SIM | MUST | met | README table |
-| Emergency call without SIM | SHOULD | untested | needs a deliberate test procedure (no live 112 call) |
-| Hardware-backed encryption; FBE default | MUST | met | `ro.crypto.state=encrypted`, type `file` |
-| Wi-Fi, same MAC as stock | MUST | verify | MAC b0:c2:c7:bb:49:c1 is vendor-assigned and consecutive to the BT MAC; compare with the stock sticker/Settings once |
-| Wi-Fi tethering | MUST | verify | softap supported (WPA3 SAE feature reported); not exercised end to end |
-| MTP; USB tethering | MUST | met | README: MTP, PTP, NCM tethering verified against host descriptors |
-| GPS | MUST | met | provider present; fixes observed in daily use |
-| Bluetooth, same MAC as stock | MUST | met | BT MAC equals `ro.boot.btmacaddr` |
+| RIL calls and data | MUST | met | 24.0, Orange SK: VoLTE and VoWiFi calls both directions, SMS both ways, LTE data |
+| Emergency call with SIM | MUST | untested on 24.0 | worked on 23.2; needs a test that does not reach a real emergency service (`cmd phone emergency-number-test-mode`) |
+| Emergency call without SIM | SHOULD | untested | same procedure, UI path only |
+| Hardware-backed encryption; FBE default | MUST | met | `ro.crypto.state=encrypted`, type `file`; PIN-locked CE storage survives the 23.2→24.0 update |
+| Wi-Fi, same MAC as stock | MUST | verify | MAC is vendor-assigned and stable across builds (regression check A40); not yet compared with stock's Settings once |
+| Wi-Fi tethering | MUST | untested | softap supported; not exercised end to end |
+| MTP; USB tethering | MUST | met | MTP, PTP, NCM tethering checked from the host side (regression check P10) |
+| GPS | MUST | verify | fixes observed in daily use on 23.2; no outdoor fix measured on 24.0 |
+| Bluetooth, same MAC as stock | MUST | met | BT MAC equals `ro.boot.btmacaddr` (regression check A41) |
 | Bluetooth tethering | SHOULD | verify | PAN NAP service registered; not exercised |
-| aptX / aptX HD / aptX Adaptive as on stock | SHOULD | verify | framework cap `sbc-aac-aptx-aptxhd-ldac` identical to stock; vendor cap includes aptxadaptiver2 as on stock; needs an aptX sink to prove |
-| Cameras front and rear, all rear cameras | MUST/SHOULD | met | 3 rear + front, API1 and API2, video, README |
+| aptX / aptX HD / aptX Adaptive as on stock | SHOULD | verify | codec capabilities identical to stock; needs an aptX sink to prove |
+| Cameras front and rear, all rear cameras | MUST/SHOULD | met | 24.0: 8/8 Camera2 and 3/3 API1 camera ids stream (regression check P05) |
+| Video recording front and rear | MUST | verify | hardware encoder verified (screen recording); camera-app recording not re-run on 24.0 |
 | Hardware codecs as stock | MUST | met | stock `media_codecs*.xml` shipped; playback/recording verified |
 | Display at stock resolution and density | MUST/SHOULD | met | inner 1080x2640@420, cover 1080x1272@360 |
 | HDR10 playback | SHOULD | verify | both panels report HDR types 2,3,4; playback not measured |
-| NFC | MUST | met | payments verified |
-| Fingerprint | MUST | met | |
+| NFC | MUST | met | card read on 24.0 (regression step B05) |
+| Fingerprint | MUST | met | unlock on 24.0 (regression step B04) |
 | IR blaster / SD card / adoptable storage | SHOULD/MUST | n/a | none on this device |
-| Accelerometer, gyroscope, proximity, light | MUST | met | 84 sensors listed, fold postures commit |
-| Other stock sensors | SHOULD | verify | count matches stock's 79-84; per-sensor behaviour not audited |
+| Accelerometer, gyroscope, proximity, light | MUST | met | present and declared; adaptive brightness reads both light sensors |
+| Other stock sensors | SHOULD | verify | 24.0 lists 76 sensors (68 hardware); the 23.2 walk counted differently (84). Compare the list with stock's before claiming parity |
 | Proprietary accessories | SHOULD | n/a | |
 | Hardware deviations documented | MUST | met (README) | thermal profile switching is the one deviation; UVC and RNDIS explained as not-on-stock |
 
@@ -40,25 +44,25 @@ Status words: **met**, **gap**, **untested**, **n/a** (no such hardware or featu
 | Requirement | Level | Status | Evidence / note |
 |---|---|---|---|
 | Unique codename, `lineage_arcfox.mk` | MUST | met | |
-| `lineage.dependencies` for breakfast/roomservice, LineageOS org only | MUST | **gap** | arcfox has no `lineage.dependencies`; sm8635-common's is an empty stub. Also blobs/kernel live in personal repos, not the LineageOS org |
-| userdebug build | MUST | verify | `ro.build.type=userdebug`, but `ro.debuggable=0` in system/build.prop while rooted debugging works; find what sets it and whether official 23.x userdebug reports the same |
-| GKI: source-built kernel or Google GKI; all feasible modules from source | MUST | met | kernel 6.1.145 built from source via kernel.mk; vendor_dlkm and system_dlkm modules built from source (system_dlkm vermagic matches our kernel) |
-| No software touch-wake without firmware support | MUST | met | Verified 2026-09-16: at screen-off the Goodix drivers send the IC the gesture-mode command 0xA6 (kmsg `enable double gesture mode cmd 0xff7f` / `Send enable gesture mode`), enable IRQ wake, and only react to the IC-reported gesture ID 0xCC; no tap timing or coordinates in the kernel. Stock ships the same modules with the same code path. Details in docs/DT2W.md |
+| `lineage.dependencies`, LineageOS org only | MUST | partial | 2026-11-23: arcfox → sm8635-common; sm8635-common → kernel and devicetrees (roomservice dry run clean). Open: the kernel modules are assembled from about 20 repositories by `scripts/setup-kernel-repos.sh`; an official tree needs one `android_kernel_motorola_sm8635-modules` repository, and all repositories under the LineageOS organisation |
+| userdebug build | MUST | met | `ro.build.type=userdebug`; `ro.debuggable=0` is set by LineageOS itself for userdebug (`vendor/lineage/config/common.mk`) |
+| GKI: source-built kernel; all feasible modules from source | MUST | met | kernel 6.1.145 and the vendor_dlkm/system_dlkm modules built from source |
+| No software touch-wake without firmware support | MUST | met | the Goodix ICs run their own gesture mode (command 0xA6, gesture ID 0xCC); see docs/DT2W.md |
 | No forced fast charge, no register hacks, no custom KSM | MUST | met | nothing of the kind in the tree |
 | Governors and I/O schedulers from the allowed lists | MUST | met | walt/conservative/powersave/performance/schedutil; mq-deadline/kyber/bfq |
 | OEM hotplug drivers only | MUST | met | |
 | SELinux enforcing | MUST | met | `getenforce` = Enforcing |
-| Verity disabled on system for userdebug; verity on vendor | MUST/SHOULD | **gap** | AVB verification is on with the test key and dm-verity is active (`adb remount` needs overlayfs). Official Motorola trees set `BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3`; decide between that and vendor-only verity |
-| Updater app upgrades + documented recovery | MUST | partial | recovery path works (sideload verified end to end); the Updater app needs an OTA server, which only exists for official builds |
+| Verity disabled on system for userdebug | MUST | met | `BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3`, as the official Motorola trees; no partition is verified on the device |
+| Updater app upgrades + documented recovery | MUST | partial | recovery sideload verified end to end, including 23.2→24.0 with data kept; the Updater app needs an OTA server, which only official builds have |
 | FRP with GApps | SHOULD | untested | `ro.frp.pst` set; needs a wipe-and-relock style test |
 | Play Integrity responses not altered | MUST | met | stock fingerprint only; no spoofing |
-| 64-bit binder; no su; PIE blobs | MUST | met | 64-bit only product; no su binary; blobs from stock |
-| Extraction script reproduces blobs; global extract-utils; sources noted | MUST/SHOULD | mostly met | `extract-files.py` on tools/extract-utils; both lists name the source firmware W1UXS36H.72-45-10-7; `fix-vendor-blobs.sh` hand-edits must be folded into the script's fixups to be reproducible |
-| CVE patches | MUST/SHOULD | verify | platform patch 2026-08-01, vendor 2026-07-01; kernel CVE cadence not tracked |
-| Firmware assertion / A/B both slots on known firmware | MUST | met | install docs require W1UXS36H.72-45-10-7 on both slots (copy-partitions step) |
+| 64-bit binder; no su; PIE blobs | MUST | met | |
+| Extraction script reproduces blobs; global extract-utils; sources noted | MUST/SHOULD | met | 2026-11-23: every blob fix lives in `extract-files.py` (the binary patches pinned by hash); extraction from the stock dump into an empty tree, over an existing tree, and from an already fixed tree all reproduce the vendor tree release 20261122 was built from, byte for byte |
+| CVE patches | MUST/SHOULD | verify | platform 2026-11-01; vendor 2026-07-01 (stock files). The kernel is still 6.1.145, as on 23.2; LineageOS's SM8650 kernel is at 6.1.177. Kernel CVE merges are not tracked yet |
+| Firmware: A/B both slots on known firmware | MUST | met | install docs require W1UXS36H.72-45-10-7 on both slots; the wiki draft uses the `ab_copy_partitions` template |
 | exFAT | MAY | met | kernel 6.1 mainline exfat |
 | In-kernel LiveDisplay colour adjustment | SHOULD | **gap** | no LiveDisplay HAL shipped; stock has `vendor.qti.hardware.display.color-service`, so the SDM LiveDisplay backend is feasible |
-| Software deviations approved and documented; Jelly shipped | MUST | **gap** | Jelly is shipped. The Launcher3 and DeskClock patches are software deviations from other LineageOS devices and would need Director approval or upstreaming |
+| Software deviations approved and documented | MUST | **gap** | 24.0 carries 15 platform forks (frameworks/av, base, native, opt/telephony; hardware/interfaces, qcom-caf/common; DeskClock, Dialer, Launcher3, Settings, SetupWizard, CarrierConfig; system/media; vendor/lineage; vendor/qcom/opensource/interfaces). Official builds take none of them: each must be upstreamed or replaced from the device tree. The Launcher3 cover hooks have no device-tree equivalent other than the zeekr-style cutout |
 | Vendor image built; no modified prebuilt vendor | MUST | met | vendor image built from extracted blobs |
 | GSI verification | SHOULD | untested | |
 
@@ -67,23 +71,29 @@ Status words: **met**, **gap**, **untested**, **n/a** (no such hardware or featu
 | Requirement | Level | Status | Evidence / note |
 |---|---|---|---|
 | Authorship of non-original commits | MUST | verify | adapted files from zeekr are annotated in comments, not commit trailers |
-| Copyright headers "(C) YEAR The LineageOS Project" on original files | MUST | **gap** | 17 original files in arcfox and 66 in sm8635-common carry no licence header |
+| Copyright headers on original files | MUST | met | 2026-11-23: SPDX headers ("The LineageOS Project", Apache-2.0) on the original build files, scripts, init files, overlays and sources of both trees, as the official sm8550-common tree does. Stock-derived files (VINTF manifest and matrix, device state configuration, generated carrier XML) carry none, as there |
 | No force pushes / backups | SHOULD | met | |
 | GitLab account, triage | MUST | open | process, needs a maintainer identity |
 | Licensing: kernel GPLv2, Android Apache-2.0 | MUST | met | |
-| Wiki page with install instructions, deviations | MUST | draft exists | INSTALL-RELEASE.md, GAPPS.md, README cover the content; needs the Wiki template |
-| No screen of death, no abnormal drain | MUST | **watch** | one boot on 2026-09-15 came up without the cover panel enumerated (Motorola logo stayed); intermittent, not reproduced on reboot. Battery drain not measured over a full day |
-| LineageOS Recovery default; addon packages install through it | MUST | met | recovery and MindTheGapps verified end to end |
+| Wiki page with install instructions, deviations | MUST | draft | `docs/wiki/arcfox.yml` (device entry, unmeasured specs marked VERIFY); INSTALL-RELEASE.md and GAPPS.md hold the procedure |
+| No screen of death, no abnormal drain | MUST | met / watch | the cover-panel boot race is fixed (SurfaceFlinger, proven by a forced-race build); unplugged standby with AOD on: CPU awake 1.6 % of 55 min (build 4). A full-day drain measurement on 24.0 is still open |
+| LineageOS Recovery default; addon packages install through it | MUST | met | recovery and MindTheGapps 17 verified end to end on 24.0, including recovery started on the stock boot chain |
 
-## What we can work on, in order
+## AI-assisted contributions (charter `ai-coding-assistants.md`)
 
-1. **Copyright headers** on all original files in both trees (83 files). Mechanical, a MUST.
-2. **`lineage.dependencies`** for arcfox pointing at sm8635-common, and a real plan for the kernel and vendor repositories (an official device needs them under the LineageOS organisation).
-3. **Verity/AVB policy**: match the official Motorola trees (`--flags 3`) or keep vendor verity only; either way userdebug must not ship system verity.
-4. **LiveDisplay**: bring up `vendor.lineage.livedisplay@2.1-service.sdm` against the QTI color service (the sm8475 official tree is the template).
-5. **Reproducible blobs**: move every `fix-vendor-blobs.sh` edit into `extract-files.py` fixups so a clean extraction yields the shipped set.
-6. **Verification tests** with a written procedure: Wi-Fi hotspot, BT tethering, aptX on a real sink, HDR10 playback, FRP with GApps, emergency dialling without SIM (UI path only), MAC comparison against stock.
-7. **`ro.debuggable`**: one fact to establish, not a fix (touch-wake provenance is settled, see docs/DT2W.md).
-8. **The cover-panel boot race**: add a boot-time log capture (and quiet `qti_glink_charger`'s 3-second printk) so the next occurrence is diagnosable; a "screen of death" class issue blocks official status.
-9. **Software deviations**: upstream the DeskClock widget series and the Launcher3 drawer-scale hook; decide whether to keep the covered-corner hooks or fall back to the zeekr-style cutout for an official variant.
-10. **Battery drain measurement** over a normal day, with `dumpsys batterystats` before and after.
+| Requirement | Level | Status | Note |
+|---|---|---|---|
+| `Assisted-by: LLM` tag on AI-assisted commits | MUST | **gap** | this port's commits carry no such tag; contributions to LineageOS would need it |
+| Concise commit messages; comments only for the non-obvious | MUST | **gap** | many commits and comments here are long by design (they record root causes); trim for submission |
+| Submitter understands and can explain every change | MUST | maintainer | reviewers will ask; docs/ and the CHANGELOG hold the reasoning |
+| Fully AI-generated changes reviewed by a second human | MUST | open | |
+
+## What is left, in order
+
+1. **Hands-on checks** on 24.0: Wi-Fi hotspot, an outdoor GPS fix, emergency dialling through the test mode (with and without SIM), camera-app video recording, Wi-Fi MAC against stock.
+2. **Kernel modules in one repository**, then `lineage.dependencies` can name it; and a plan for moving all trees under the LineageOS organisation.
+3. **Kernel CVE cadence**: merge 6.1 stable/ACK updates and record how.
+4. **LiveDisplay**: bring up `vendor.lineage.livedisplay` against the QTI color service (the sm8475 official tree is the template).
+5. **Upstream the general platform fixes** through LineageOS Gerrit (with the `Assisted-by` tag): the codec_provenance audio opt-out, the Dialer landscape insets, the SurfaceFlinger hotplug race, the cover volume-key rotation, LHDC v5 types, the qcom-caf camera gate.
+6. **Decide on the cover camera block**: the Launcher3 hooks (unofficial) or the zeekr-style cutout (official).
+7. **SHOULD items**: BT tethering, aptX on a real sink, HDR10 playback, FRP with GApps, GSI, a full-day battery measurement.

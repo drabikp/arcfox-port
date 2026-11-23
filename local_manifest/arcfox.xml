@@ -11,8 +11,8 @@
       repo sync -c -j8
 
   Proprietary blobs are NOT published here. After syncing, run
-  scripts/extract-firmware.sh + the device tree's extract-files.py against a
-  stock firmware package, then scripts/fix-vendor-blobs.sh. See README.md.
+  scripts/extract-firmware.sh + the device trees' extract-files.py against a
+  stock firmware package. See README.md.
 -->
 <manifest>
 
